@@ -1,0 +1,725 @@
+import { encounters, locations, pagerEvents, SHIFT_LENGTH, taskTemplates } from "./content";
+import type { ActivePager, ActiveTask, Consequence, Encounter, EncounterChoice, GameState, LocationId, ResourceItem, ResourceItemId, ShiftLogEntry, ShiftPhase, TaskTemplate, TeamMember, TeamMemberId, WardAcuityState } from "./types";
+
+const clamp = (value: number, min = 0, max = 100) => Math.max(min, Math.min(max, value));
+
+const clinicalLocations = locations.map((location) => location.id);
+
+export function formatClock(minute: number): string {
+  const start = 21 * 60;
+  const total = start + minute;
+  const hours = Math.floor(total / 60) % 24;
+  const mins = total % 60;
+  return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+}
+
+export function shiftPhaseFor(minute: number): ShiftPhase {
+  if (minute >= 600) return "pre_handover";
+  if (minute >= 240) return "deep";
+  return "early";
+}
+
+export function nextRandom(seed: number): [number, number] {
+  const nextSeed = (seed * 1664525 + 1013904223) >>> 0;
+  return [nextSeed / 4294967296, nextSeed];
+}
+
+export function chooseWeighted<T extends { weight: number }>(items: T[], seed: number): [T | undefined, number] {
+  if (!items.length) return [undefined, seed];
+  const total = items.reduce((sum, item) => sum + Math.max(0, item.weight), 0);
+  if (total <= 0) return [items[0], seed];
+  const [roll, nextSeed] = nextRandom(seed);
+  let cursor = roll * total;
+  for (const item of items) {
+    cursor -= Math.max(0, item.weight);
+    if (cursor <= 0) return [item, nextSeed];
+  }
+  return [items[items.length - 1], nextSeed];
+}
+
+function initialWardAcuity(): Record<LocationId, WardAcuityState> {
+  return Object.fromEntries(
+    locations.map((location) => [location.id, { level: location.risk === "volatile" ? 45 : location.risk === "high" ? 35 : location.risk === "moderate" ? 24 : 12, unresolvedRisk: 0 }]),
+  ) as Record<LocationId, WardAcuityState>;
+}
+
+function initialLocationLastVisited(): Record<LocationId, number> {
+  return Object.fromEntries(locations.map((location) => [location.id, location.id === "mau" ? 0 : -12])) as Record<LocationId, number>;
+}
+
+function initialTeam(): TeamMember[] {
+  return [
+    { id: "fy1", name: "FY1", role: "Keen, overloaded, good for contained jobs", busyUntil: 0, strengths: ["routine jobs", "simple prescribing", "low-risk reviews"] },
+    { id: "trusted_fy2", name: "Trusted FY2", role: "Solid with sick-ish patients if briefed well", busyUntil: 0, strengths: ["urgent reviews", "handover jobs", "clear escalation"] },
+    { id: "locum_no_login", name: "Locum without login", role: "Clinically useful, digitally cursed", busyUntil: 0, strengths: ["bedside assessment", "practical ward help"] },
+    { id: "bed_manager", name: "Bed manager", role: "Flow, beds, transport, and applied diplomacy", busyUntil: 0, strengths: ["flow", "systems", "logistics"] },
+  ];
+}
+
+function initialResources(): ResourceItem[] {
+  return [
+    { id: "coffee", label: "Coffee", charges: 2, description: "+caffeine, +focus, 2m", usableWhen: "always" },
+    { id: "snack", label: "Snack", charges: 1, description: "+stamina, +focus, 3m", usableWhen: "always" },
+    { id: "guideline_app", label: "Guideline app", charges: 2, description: "Clinical confidence during an encounter", usableWhen: "encounter" },
+    { id: "abg_kit", label: "ABG kit", charges: 1, description: "Respiratory/metabolic shortcut", usableWhen: "encounter" },
+    { id: "cannula_kit", label: "Cannula kit", charges: 1, description: "Urgent patient setup", usableWhen: "task" },
+    { id: "consultant_advice", label: "Consultant advice token", charges: 1, description: "Safer escalation on a hard case", usableWhen: "encounter" },
+    { id: "radiology_persuasion", label: "Radiology persuasion token", charges: 1, description: "A cleaner CT conversation", usableWhen: "task" },
+    { id: "handover_notes", label: "Handover notes", charges: 1, description: "Boost handover quality", usableWhen: "always" },
+  ];
+}
+
+function makeTask(template: TaskTemplate, state: GameState, id = template.id): ActiveTask {
+  const timeToDeterioration = rebalanceDeterioration(template);
+  return {
+    id,
+    templateId: template.id,
+    locationId: template.locationId,
+    message: template.message,
+    sender: template.sender,
+    source: template.source,
+    claimedUrgency: template.claimedUrgency,
+    trueUrgency: template.trueUrgency,
+    category: template.category,
+    encounterId: template.encounterId,
+    createdAt: state.minute,
+    seenAt: state.minute,
+    lastUpdatedAt: state.minute,
+    dueAt: state.minute + timeToDeterioration,
+    status: "new",
+    penaltyApplied: false,
+    vague: Boolean(template.vague),
+    regSense: Boolean(template.regSense),
+    deferred: false,
+    ignored: template.ignored,
+    handledWell: template.handledWell,
+    delegableTo: template.delegableTo,
+    riskyDelegateTo: template.riskyDelegateTo,
+    delegationDuration: template.delegationDuration,
+  };
+}
+
+function rebalanceDeterioration(template: TaskTemplate): number {
+  const original = template.timeToDeterioration;
+  if (template.trueUrgency === "critical") return clamp(original, 10, 25);
+  if (template.trueUrgency === "high") return clamp(Math.max(original, original + 15), 25, 60);
+  if (template.trueUrgency === "medium") return clamp(Math.max(original + 35, 60), 60, 120);
+  return clamp(Math.max(original + 50, 90), 90, 180);
+}
+
+function startingTasks(state: GameState): ActiveTask[] {
+  return ["p_sepsis", "p_drug_chart_blue", "t_reg_1"]
+    .map((id) => taskTemplates.find((template) => template.id === id))
+    .filter(Boolean)
+    .map((template) => makeTask(template!, state));
+}
+
+export function initialGameState(seed = 92821): GameState {
+  const base: GameState = {
+    minute: 0,
+    locationId: "mau",
+    stamina: 82,
+    focus: 78,
+    reputation: 50,
+    patientSafety: 72,
+    pagerBacklog: 3,
+    clinicalConfidence: 45,
+    caffeine: 25,
+    score: 0,
+    handoverQuality: 35,
+    emergenciesHandled: 0,
+    patientsStabilised: 0,
+    dangerousDelays: 0,
+    inappropriateAvoided: 0,
+    breaksTaken: 0,
+    datix: 0,
+    consultantEscalations: 0,
+    chaosSurvived: 0,
+    birdStatus: "unseen",
+    rngSeed: seed,
+    shiftPhase: "early",
+    activeTasks: [],
+    completedTaskIds: [],
+    nextTaskSpawnAt: 32,
+    wardAcuity: initialWardAcuity(),
+    regSense: 18,
+    hospitalPressure: 32,
+    oversight: 68,
+    locationLastVisited: initialLocationLastVisited(),
+    activePagerIds: [],
+    resolvedPagerIds: [],
+    deferredPagerIds: [],
+    completedEncounterIds: [],
+    activeEncounterStepId: undefined,
+    handoverGrillingDone: false,
+    team: initialTeam(),
+    allies: ["Experienced night nurse"],
+    items: ["Guideline app", "Coffee", "ABG kit"],
+    resources: initialResources(),
+    log: [{ minute: 0, text: "21:00 handover complete. You are the medical registrar. The bleep has opinions.", tone: "neutral" }],
+    ended: false,
+  };
+  const activeTasks = startingTasks(base);
+  return { ...base, activeTasks, activePagerIds: activeTasks.map((task) => task.id) };
+}
+
+export function applyConsequence(state: GameState, consequence: Consequence): GameState {
+  return checkEnding({
+    ...state,
+    minute: Math.max(0, state.minute + (consequence.time ?? 0)),
+    stamina: clamp(state.stamina + (consequence.stamina ?? 0)),
+    focus: clamp(state.focus + (consequence.focus ?? 0)),
+    reputation: clamp(state.reputation + (consequence.reputation ?? 0)),
+    patientSafety: clamp(state.patientSafety + (consequence.patientSafety ?? 0)),
+    pagerBacklog: Math.max(0, state.pagerBacklog + (consequence.pagerBacklog ?? 0)),
+    clinicalConfidence: clamp(state.clinicalConfidence + (consequence.clinicalConfidence ?? 0)),
+    caffeine: clamp(state.caffeine + (consequence.caffeine ?? 0)),
+    score: state.score + (consequence.score ?? 0),
+    handoverQuality: clamp(state.handoverQuality + (consequence.handoverQuality ?? 0)),
+    emergenciesHandled: state.emergenciesHandled + (consequence.emergenciesHandled ?? 0),
+    patientsStabilised: state.patientsStabilised + (consequence.patientsStabilised ?? 0),
+    dangerousDelays: state.dangerousDelays + (consequence.dangerousDelays ?? 0),
+    inappropriateAvoided: state.inappropriateAvoided + (consequence.inappropriateAvoided ?? 0),
+    breaksTaken: state.breaksTaken + (consequence.breaksTaken ?? 0),
+    datix: state.datix + (consequence.datix ?? 0),
+    consultantEscalations: state.consultantEscalations + (consequence.consultantEscalations ?? 0),
+    chaosSurvived: state.chaosSurvived + (consequence.chaosSurvived ?? 0),
+  });
+}
+
+export function addLog(state: GameState, text: string, tone: ShiftLogEntry["tone"] = "neutral"): GameState {
+  return {
+    ...state,
+    log: [{ minute: state.minute, text, tone }, ...state.log].slice(0, 20),
+  };
+}
+
+function fallbackPagerTasks(state: GameState): ActiveTask[] {
+  const taskIds = new Set(state.activeTasks.map((task) => task.id));
+  return state.activePagerIds
+    .filter((id) => !taskIds.has(id))
+    .map((id) => {
+      const event = pagerEvents.find((pager) => pager.id === id);
+      const template = taskTemplates.find((item) => item.id === id);
+      if (!event || !template) return undefined;
+      return makeTask(template, state, event.id);
+    })
+    .filter(Boolean) as ActiveTask[];
+}
+
+export function liveTasks(state: GameState): ActiveTask[] {
+  return [...state.activeTasks, ...fallbackPagerTasks(state)].sort((a, b) => {
+    const urgency = { critical: 0, high: 1, medium: 2, low: 3, nonsense: 4 };
+    return urgency[a.trueUrgency] - urgency[b.trueUrgency] || a.dueAt - b.dueAt;
+  });
+}
+
+export function activePagers(state: GameState): ActivePager[] {
+  return liveTasks(state).map((task) => ({
+    id: task.id,
+    locationId: task.locationId,
+    message: task.message,
+    sender: task.sender,
+    claimedUrgency: task.claimedUrgency,
+    trueUrgency: task.trueUrgency,
+    timeToDeterioration: Math.max(0, task.dueAt - state.minute),
+    category: task.category,
+    encounterId: task.encounterId,
+    ignored: task.ignored,
+    handledWell: task.handledWell,
+    age: state.minute - task.createdAt,
+    deferred: task.deferred,
+  }));
+}
+
+function syncLegacyPagerIds(state: GameState): GameState {
+  return { ...state, activePagerIds: state.activeTasks.map((task) => task.id), pagerBacklog: state.activeTasks.length };
+}
+
+function updateTeamAvailability(state: GameState): GameState {
+  return {
+    ...state,
+    team: state.team.map((member) => member.busyUntil <= state.minute ? { ...member, busyUntil: 0 } : member),
+  };
+}
+
+export function isTeamMemberAvailable(state: GameState, memberId: TeamMemberId): boolean {
+  const member = state.team.find((item) => item.id === memberId);
+  return Boolean(member && member.busyUntil <= state.minute);
+}
+
+export function delegationDuration(task: ActiveTask, memberId: TeamMemberId): number {
+  const explicit = task.delegationDuration?.[memberId];
+  if (explicit) return Math.max(20, Math.min(34, explicit));
+  const base = task.trueUrgency === "critical" ? 30 : task.trueUrgency === "high" ? 28 : task.trueUrgency === "medium" ? 24 : 20;
+  const adjusted =
+    memberId === "locum_no_login" && (task.source === "system" || ["routine", "inappropriate"].includes(task.category)) ? base + 6 :
+    memberId === "bed_manager" && task.source === "system" ? base - 3 :
+    memberId === "bed_manager" ? base + 4 :
+    memberId === "trusted_fy2" ? base - 2 :
+    base;
+  return Math.max(20, Math.min(34, adjusted));
+}
+
+export function isDelegationAppropriate(task: ActiveTask, memberId: TeamMemberId): boolean {
+  if (task.delegableTo?.includes(memberId)) return true;
+  if (task.riskyDelegateTo?.includes(memberId)) return false;
+  if (task.regSense || task.source === "reg_sense") return false;
+  if (task.trueUrgency === "critical") return false;
+  if (memberId === "fy1") return ["low", "nonsense"].includes(task.trueUrgency) || (task.trueUrgency === "medium" && ["routine", "inappropriate", "absurd"].includes(task.category));
+  if (memberId === "trusted_fy2") return task.category !== "emergency";
+  if (memberId === "locum_no_login") return Boolean(task.encounterId) || task.source === "system" || task.trueUrgency === "medium";
+  if (memberId === "bed_manager") return task.source === "system" || ["routine", "inappropriate", "absurd"].includes(task.category) || task.locationId === "mau";
+  return false;
+}
+
+function alterWardAcuity(state: GameState, locationId: LocationId, levelDelta: number, riskDelta: number): GameState {
+  const current = state.wardAcuity[locationId];
+  return {
+    ...state,
+    wardAcuity: {
+      ...state.wardAcuity,
+      [locationId]: {
+        level: clamp(current.level + levelDelta),
+        unresolvedRisk: clamp(current.unresolvedRisk + riskDelta),
+      },
+    },
+  };
+}
+
+function refreshOversightAt(state: GameState, locationId: LocationId, amount: number): GameState {
+  return {
+    ...state,
+    oversight: clamp(state.oversight + amount),
+    locationLastVisited: {
+      ...state.locationLastVisited,
+      [locationId]: state.minute,
+    },
+  };
+}
+
+function staleLocations(state: GameState): LocationId[] {
+  return clinicalLocations.filter((locationId) => state.minute - state.locationLastVisited[locationId] > 28);
+}
+
+function applyOversightPressure(state: GameState, elapsedMinutes: number): GameState {
+  const stale = staleLocations(state);
+  const currentAreaFocusPenalty = elapsedMinutes >= 8 ? 1 : 0;
+  const oversightLoss = Math.ceil(elapsedMinutes / 10) + Math.floor(stale.length / 3) + currentAreaFocusPenalty;
+  let next = {
+    ...state,
+    oversight: clamp(state.oversight - oversightLoss),
+    hospitalPressure: clamp(state.hospitalPressure + Math.floor(stale.length / 4) + (state.oversight < 35 ? 4 : 0)),
+  };
+
+  for (const locationId of stale.slice(0, 4)) {
+    next = alterWardAcuity(next, locationId, state.oversight < 45 ? 2 : 1, 1);
+  }
+  return next;
+}
+
+function candidateTemplates(state: GameState): TaskTemplate[] {
+  const activeTemplateIds = new Set(state.activeTasks.map((task) => task.templateId));
+  const phase = shiftPhaseFor(state.minute);
+  return taskTemplates
+    .filter((template) => !activeTemplateIds.has(template.id))
+    .filter((template) => !template.phases || template.phases.includes(phase))
+    .map((template) => {
+      const localBonus = template.locationId === state.locationId ? 5 : 0;
+      const acuityBonus = Math.floor(state.wardAcuity[template.locationId].level / 18);
+      const pressureBonus = state.hospitalPressure > 65 && ["critical", "high"].includes(template.trueUrgency) ? 4 : 0;
+      const regSenseBonus = template.regSense && state.regSense > 35 ? 5 : 0;
+      return { ...template, weight: template.weight + localBonus + acuityBonus + pressureBonus + regSenseBonus };
+    });
+}
+
+function nextSpawnDelay(state: GameState, seed: number): [number, number] {
+  const phase = shiftPhaseFor(state.minute);
+  const [roll, nextSeed] = nextRandom(seed);
+  const range = phase === "early" ? [25, 45] : phase === "deep" ? [18, 35] : [15, 30];
+  const pressureAdjustment = state.hospitalPressure > 70 || state.oversight < 35 ? -8 : state.hospitalPressure < 35 && state.oversight > 65 ? 6 : 0;
+  const delay = Math.max(10, Math.round(range[0] + roll * (range[1] - range[0]) + pressureAdjustment));
+  return [delay, nextSeed];
+}
+
+export function spawnTask(state: GameState): GameState {
+  const [template, rngSeed] = chooseWeighted(candidateTemplates(state), state.rngSeed);
+  if (!template) return { ...state, rngSeed };
+  const taskId = `${template.id}-${state.minute}-${rngSeed}`;
+  const task = makeTask(template, { ...state, rngSeed }, taskId);
+  const next = syncLegacyPagerIds({
+    ...state,
+    rngSeed,
+    activeTasks: [...state.activeTasks, task],
+    completedTaskIds: [...new Set([...state.completedTaskIds, template.id])],
+    regSense: clamp(state.regSense + (task.regSense ? 6 : 1)),
+    birdStatus: task.templateId === "p_bird" && state.birdStatus === "unseen" ? "sighted" : state.birdStatus,
+  });
+  const label = task.regSense ? "Reg Sense" : task.source === "handover" ? "Handover" : task.source === "system" ? "System" : "Bleep";
+  return addLog(next, `${label}: ${task.message}`, task.trueUrgency === "critical" ? "bad" : "neutral");
+}
+
+function deteriorateTask(state: GameState, task: ActiveTask): GameState {
+  if (task.penaltyApplied) return state;
+  const severityMultiplier = Math.max(1, Math.ceil(state.wardAcuity[task.locationId].level / 45));
+  const amplified = {
+    ...task.ignored,
+    patientSafety: (task.ignored.patientSafety ?? 0) * severityMultiplier,
+    dangerousDelays: task.trueUrgency === "critical" || task.trueUrgency === "high" ? Math.max(1, task.ignored.dangerousDelays ?? 0) : task.ignored.dangerousDelays,
+    datix: ["critical", "high", "medium"].includes(task.trueUrgency) ? Math.max(1, task.ignored.datix ?? 0) : task.ignored.datix,
+  };
+  let next = applyConsequence(state, amplified);
+  next = {
+    ...next,
+    activeTasks: next.activeTasks.map((item) => item.id === task.id ? { ...item, status: "deteriorated", deterioratedAt: next.minute, penaltyApplied: true, lastUpdatedAt: next.minute } : item),
+    hospitalPressure: clamp(next.hospitalPressure + 8),
+    regSense: task.regSense ? clamp(next.regSense - 8) : next.regSense,
+    birdStatus: task.templateId === "p_bird" ? "loose" : next.birdStatus,
+  };
+  next = alterWardAcuity(next, task.locationId, 12, 16);
+  if (task.regSense && task.encounterId) {
+    return addLog(syncLegacyPagerIds(next), `Reg Sense missed: ${task.message}. It is now overdue and unsafe.`, "bad");
+  }
+  return addLog(syncLegacyPagerIds(next), `Delayed: ${task.message}. The situation deteriorated.`, "bad");
+}
+
+function tickTaskDeterioration(state: GameState): GameState {
+  let next = state;
+  for (const task of [...next.activeTasks]) {
+    if (next.minute >= task.dueAt && ["critical", "high", "medium"].includes(task.trueUrgency)) {
+      next = deteriorateTask(next, task);
+    }
+  }
+  return syncLegacyPagerIds(next);
+}
+
+export function runShiftDirector(state: GameState, elapsedMinutes: number): GameState {
+  if (state.ended) return state;
+  let next = updateTeamAvailability({
+    ...state,
+    shiftPhase: shiftPhaseFor(state.minute),
+    hospitalPressure: clamp(state.hospitalPressure + Math.ceil(elapsedMinutes / 5) + Math.max(0, state.activeTasks.length - 2) * 2 + (state.locationId === "mess" && state.activeTasks.length > 0 ? 6 : 0)),
+    regSense: clamp(state.regSense + Math.ceil(elapsedMinutes / 8)),
+  });
+  next = applyOversightPressure(next, elapsedMinutes);
+
+  for (const locationId of clinicalLocations) {
+    const activeHere = next.activeTasks.filter((task) => task.locationId === locationId).length;
+    if (activeHere > 0) next = alterWardAcuity(next, locationId, activeHere, activeHere * 2);
+  }
+
+  next = tickTaskDeterioration(next);
+  while (!next.ended && !next.activeEncounterId && next.minute >= next.nextTaskSpawnAt) {
+    next = spawnTask(next);
+    const [delay, rngSeed] = nextSpawnDelay(next, next.rngSeed);
+    next = { ...next, rngSeed, nextTaskSpawnAt: next.minute + delay };
+  }
+  return syncLegacyPagerIds(next);
+}
+
+export function spawnPager(state: GameState): GameState {
+  return spawnTask(state);
+}
+
+function triggerLocationEncounter(state: GameState): GameState {
+  if (state.activeEncounterId || state.ended) return state;
+  const encounter = encounters.find((item) => item.locationId === state.locationId && !state.completedEncounterIds.includes(item.id));
+  if (!encounter) return state;
+  return addLog({ ...state, activeEncounterId: encounter.id, activeEncounterStepId: firstEncounterStepId(encounter.id) }, `On arrival: ${encounter.title}`, encounter.category === "emergency" ? "bad" : "neutral");
+}
+
+export function advanceTime(state: GameState, minutes: number): GameState {
+  let next = applyConsequence(state, { time: minutes, stamina: -Math.ceil(minutes / 6), focus: -Math.ceil(minutes / 8) });
+  next = runShiftDirector(next, minutes);
+  return checkEnding(next);
+}
+
+export function moveTo(state: GameState, locationId: LocationId): GameState {
+  const current = locations.find((location) => location.id === state.locationId)!;
+  const destination = locations.find((location) => location.id === locationId)!;
+  if (!current.links.includes(locationId) || state.ended || state.activeEncounterId) return state;
+  const friction = destination.id === "lifts" && !state.allies.includes("Porter who knows shortcuts") ? 4 : 0;
+  let next = advanceTime(state, destination.timeCost + friction);
+  next = { ...next, locationId };
+  next = refreshOversightAt(next, locationId, locationId === "corridor" ? 4 : 8);
+  next = addLog(next, `Moved to ${destination.name}. ${destination.quirk}`, friction ? "bad" : "neutral");
+  return triggerLocationEncounter(next);
+}
+
+function findTask(state: GameState, taskId: string): ActiveTask | undefined {
+  return liveTasks(state).find((task) => task.id === taskId || task.templateId === taskId);
+}
+
+function removeTask(state: GameState, task: ActiveTask): GameState {
+  return syncLegacyPagerIds({
+    ...state,
+    activeTasks: state.activeTasks.filter((item) => item.id !== task.id),
+    activePagerIds: state.activePagerIds.filter((id) => id !== task.id),
+    resolvedPagerIds: [...state.resolvedPagerIds, task.id],
+  });
+}
+
+export function respondToPager(state: GameState, taskId: string): GameState {
+  const task = findTask(state, taskId);
+  if (!task || state.ended) return state;
+  let next = removeTask({ ...state, locationId: task.locationId, birdStatus: task.templateId === "p_bird" && state.birdStatus === "unseen" ? "sighted" : state.birdStatus }, task);
+  next = advanceTime(next, 5);
+  next = refreshOversightAt(next, task.locationId, task.regSense ? 10 : 7);
+  next = alterWardAcuity(next, task.locationId, -8, -10);
+  if (task.encounterId) {
+    next = { ...next, activeEncounterId: task.encounterId, activeEncounterStepId: firstEncounterStepId(task.encounterId) };
+    return addLog(next, `You attend: ${task.message}`, "neutral");
+  }
+  next = applyConsequence(next, task.handledWell);
+  if (task.templateId === "p_bird") next = { ...next, birdStatus: "contained" };
+  next = maybeAwardResource(next, task);
+  return addLog(syncLegacyPagerIds(next), `Handled: ${task.message}`, "good");
+}
+
+export function deferPager(state: GameState, taskId: string): GameState {
+  if (state.ended) return state;
+  const task = findTask(state, taskId);
+  if (!task) return state;
+  const activeTasks = state.activeTasks.map((item) => item.id === task.id ? { ...item, deferred: true, status: "deferred" as const, lastUpdatedAt: state.minute, dueAt: Math.max(state.minute + 6, item.dueAt - 4) } : item);
+  let next = advanceTime({ ...state, activeTasks, deferredPagerIds: [...new Set([...state.deferredPagerIds, task.id])], hospitalPressure: clamp(state.hospitalPressure + 4) }, 3);
+  next = alterWardAcuity(next, task.locationId, 3, 4);
+  return addLog(next, `Deferred: ${task.message}`, task.trueUrgency === "critical" ? "bad" : "neutral");
+}
+
+export function ignorePager(state: GameState, taskId: string): GameState {
+  const task = findTask(state, taskId);
+  if (!task || state.ended) return state;
+  let next = applyConsequence(state, task.ignored);
+  if (task.templateId === "p_bird" && next.birdStatus !== "contained") next = { ...next, birdStatus: "loose" };
+  next = removeTask(next, task);
+  next = alterWardAcuity(next, task.locationId, ["critical", "high"].includes(task.trueUrgency) ? 10 : 3, task.vague ? 10 : 5);
+  next = { ...next, hospitalPressure: clamp(next.hospitalPressure + (task.trueUrgency === "nonsense" ? -2 : 6)) };
+  const tone = ["critical", "high"].includes(task.trueUrgency) ? "bad" : "good";
+  return addLog(next, `Ignored: ${task.message}`, tone);
+}
+
+export function delegatePager(state: GameState, taskId: string, memberId: TeamMemberId = "trusted_fy2"): GameState {
+  const task = findTask(state, taskId);
+  if (!task || state.ended) return state;
+  const member = state.team.find((item) => item.id === memberId);
+  if (!member || member.busyUntil > state.minute) {
+    return addLog(state, `${member?.name ?? "Team member"} is not available for delegation.`, "bad");
+  }
+  const duration = delegationDuration(task, memberId);
+  const appropriate = isDelegationAppropriate(task, memberId);
+  const consequence = appropriate
+    ? { reputation: 1, score: 25, pagerBacklog: -1 }
+    : { patientSafety: -7, reputation: -3, dangerousDelays: task.trueUrgency === "critical" || task.trueUrgency === "high" ? 1 : 0 };
+  let next = applyConsequence(state, consequence);
+  next = {
+    ...next,
+    team: next.team.map((item) => item.id === memberId ? { ...item, busyUntil: next.minute + duration } : item),
+    completedTaskIds: [...new Set([...next.completedTaskIds, task.templateId])],
+    hospitalPressure: clamp(next.hospitalPressure + (appropriate ? -3 : 5)),
+  };
+  if (appropriate || !["critical", "high"].includes(task.trueUrgency)) {
+    next = removeTask(next, task);
+    if (appropriate) next = maybeAwardResource(next, task);
+  } else {
+    next = {
+      ...next,
+      activeTasks: next.activeTasks.map((item) => item.id === task.id ? { ...item, status: "deferred", deferred: true, lastUpdatedAt: next.minute, dueAt: Math.max(next.minute + 4, item.dueAt - 10) } : item),
+    };
+  }
+  next = alterWardAcuity(next, task.locationId, appropriate ? -4 : 5, appropriate ? -5 : 7);
+  return addLog(next, appropriate ? `Delegated to ${member.name} for ${duration}m: ${task.message}` : `Poor delegation to ${member.name}: ${task.message}`, appropriate ? "good" : "bad");
+}
+
+function hashText(value: string): number {
+  return value.split("").reduce((sum, char) => ((sum * 31) + char.charCodeAt(0)) >>> 0, 2166136261);
+}
+
+function shuffleChoices(choices: EncounterChoice[], seed: number): EncounterChoice[] {
+  const result = [...choices];
+  let currentSeed = seed;
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const [roll, nextSeed] = nextRandom(currentSeed);
+    currentSeed = nextSeed;
+    const j = Math.floor(roll * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+const syntheticStepEncounterIds = new Set(["sepsis_hypotension", "copd_hypercapnia", "nstemi", "aki_hyperkalaemia", "delirium", "ugi_bleed", "pe_risk", "end_of_life"]);
+
+export function firstEncounterStepId(encounterId: string): string | undefined {
+  const encounter = encounters.find((item) => item.id === encounterId);
+  return encounter?.steps?.[0]?.id ?? (syntheticStepEncounterIds.has(encounterId) ? "assessment" : undefined);
+}
+
+export function currentEncounterStep(encounter?: Encounter, stepId?: string) {
+  if (!encounter?.steps?.length) return undefined;
+  return encounter.steps.find((step) => step.id === stepId) ?? encounter.steps[0];
+}
+
+export function activeEncounterView(encounter?: Encounter, stepId?: string) {
+  if (!encounter) return undefined;
+  const authoredStep = currentEncounterStep(encounter, stepId);
+  if (authoredStep) return authoredStep;
+  if (syntheticStepEncounterIds.has(encounter.id) && stepId === "assessment") {
+    return {
+      id: "assessment",
+      title: "Assessment And Prioritisation",
+      vignette: encounter.vignette,
+      observations: encounter.observations,
+      examination: encounter.examination,
+      investigations: encounter.investigations,
+      choices: [
+        {
+          id: "assessment_best",
+          label: "Do an ABCDE review, identify immediate risks, and ask for the right help early",
+          detail: "You build a working problem representation before committing to treatment.",
+          feedback: "The situation is clearer, and the ward team understand what you are worried about.",
+          consequence: { time: 6, focus: -3, clinicalConfidence: 2, score: 20 },
+          nextStepId: "management",
+        },
+        {
+          id: "assessment_partial",
+          label: "Review the notes and latest bloods before seeing the patient",
+          detail: "Some useful context, but the patient is still deteriorating in real time.",
+          feedback: "You find clues, but lose bedside momentum.",
+          consequence: { time: 8, focus: -4, patientSafety: -2 },
+          nextStepId: "management",
+        },
+        {
+          id: "assessment_unsafe",
+          label: "Give telephone advice and ask the ward to call back if worse",
+          detail: "This underestimates the risk and leaves the team without a plan.",
+          feedback: "The bleep returns sharper and less optional.",
+          consequence: { time: 5, patientSafety: -6, reputation: -2, dangerousDelays: 1 },
+          nextStepId: "management",
+          unsafe: true,
+        },
+      ],
+    };
+  }
+  return undefined;
+}
+
+export function orderedEncounterChoices(state: GameState, encounter: Encounter): EncounterChoice[] {
+  const step = activeEncounterView(encounter, state.activeEncounterStepId);
+  const choices = step?.choices ?? encounter.choices;
+  return shuffleChoices(choices, state.rngSeed ^ hashText(`${encounter.id}:${step?.id ?? "base"}`));
+}
+
+export function chooseEncounterOption(state: GameState, choiceId: string): GameState {
+  const encounter = encounters.find((item) => item.id === state.activeEncounterId);
+  const step = activeEncounterView(encounter, state.activeEncounterStepId);
+  const choices = step?.choices ?? encounter?.choices;
+  const choice = choices?.find((item) => item.id === choiceId);
+  if (!encounter || !choice || state.ended) return state;
+  let next = applyConsequence(state, choice.consequence);
+  const elapsed = choice.consequence.time ?? 0;
+  if (elapsed > 0) next = runShiftDirector(next, elapsed);
+  if (choice.unlockAlly && !next.allies.includes(choice.unlockAlly)) next = { ...next, allies: [...next.allies, choice.unlockAlly] };
+  if (choice.unlockItem && !next.items.includes(choice.unlockItem)) next = { ...next, items: [...next.items, choice.unlockItem] };
+  if (choice.nextStepId) {
+    next = refreshOversightAt(next, encounter.locationId, choice.unsafe ? 1 : 4);
+    next = alterWardAcuity(next, encounter.locationId, choice.unsafe ? 5 : -4, choice.unsafe ? 7 : -5);
+    return addLog({ ...syncLegacyPagerIds(next), activeEncounterStepId: choice.nextStepId }, `${encounter.title}: ${choice.feedback}`, choice.unsafe ? "bad" : "neutral");
+  }
+  next = {
+    ...next,
+    activeEncounterId: undefined,
+    activeEncounterStepId: undefined,
+    handoverGrillingDone: encounter.id === "consultant_grilling" ? true : next.handoverGrillingDone,
+    completedEncounterIds: [...new Set([...next.completedEncounterIds, encounter.id])],
+    resolvedPagerIds: [...next.resolvedPagerIds, `encounter:${encounter.id}`],
+    hospitalPressure: clamp(next.hospitalPressure + (choice.unsafe ? 6 : -5)),
+  };
+  next = refreshOversightAt(next, encounter.locationId, choice.unsafe ? 1 : 6);
+  next = alterWardAcuity(next, encounter.locationId, choice.unsafe ? 8 : -12, choice.unsafe ? 12 : -16);
+  if (!choice.unsafe && choice.id === "best") next = maybeAwardEncounterResource(next, encounter);
+  next = addLog(syncLegacyPagerIds(next), `${encounter.title}: ${choice.feedback}`, choice.unsafe ? "bad" : choice.id === "best" ? "good" : "neutral");
+  if (encounter.id === "consultant_grilling") {
+    return { ...next, minute: SHIFT_LENGTH, ended: true, endingReason: "Morning handover survived, including consultant grilling." };
+  }
+  return next;
+}
+
+export function takeBreak(state: GameState): GameState {
+  if (state.locationId !== "mess" || state.ended) return state;
+  const caffeineHit = state.items.includes("Coffee") ? 12 : 0;
+  let next = applyConsequence(state, { time: 9, stamina: 16, focus: 10, caffeine: caffeineHit, breaksTaken: 1, score: state.activeTasks.length ? -10 : 20 });
+  next = { ...next, oversight: clamp(next.oversight - (state.activeTasks.length ? 8 : 4)) };
+  next = runShiftDirector(next, 9 + Math.min(8, state.activeTasks.length * 2 + state.breaksTaken));
+  const warning = state.activeTasks.length ? "Hospital pressure rises while you rest; the bleep finds you anyway." : "You take nine protected-ish minutes in the mess.";
+  return addLog(next, warning, state.activeTasks.length ? "bad" : "good");
+}
+
+function changeResourceCharges(resources: ResourceItem[], resourceId: ResourceItemId, delta: number): ResourceItem[] {
+  return resources.map((resource) => resource.id === resourceId ? { ...resource, charges: Math.max(0, resource.charges + delta) } : resource);
+}
+
+function maybeAwardResource(state: GameState, task: ActiveTask): GameState {
+  const award: ResourceItemId | undefined =
+    task.source === "system" && task.locationId === "pharmacy" ? "snack" :
+    task.locationId === "radiology" ? "radiology_persuasion" :
+    task.category === "routine" && task.trueUrgency === "medium" ? "cannula_kit" :
+    task.category === "absurd" ? "coffee" :
+    undefined;
+  if (!award) return state;
+  return { ...state, resources: changeResourceCharges(state.resources, award, 1) };
+}
+
+function maybeAwardEncounterResource(state: GameState, encounter: Encounter): GameState {
+  const award: ResourceItemId | undefined =
+    encounter.locationId === "radiology" ? "radiology_persuasion" :
+    ["copd_hypercapnia", "dka", "aki_hyperkalaemia"].includes(encounter.id) ? "abg_kit" :
+    encounter.id === "consultant_grilling" ? "handover_notes" :
+    undefined;
+  if (!award) return state;
+  return { ...state, resources: changeResourceCharges(state.resources, award, 1) };
+}
+
+export function useResource(state: GameState, resourceId: ResourceItemId): GameState {
+  const resource = state.resources.find((item) => item.id === resourceId);
+  if (!resource || resource.charges <= 0 || state.ended) return addLog(state, `${resource?.label ?? "Resource"} is not available.`, "bad");
+  if (resource.usableWhen === "encounter" && !state.activeEncounterId) return addLog(state, `${resource.label} is only useful while a patient is in front of you.`, "neutral");
+  if (resource.usableWhen === "task" && state.activeTasks.length === 0) return addLog(state, `${resource.label} needs a live task to make a difference.`, "neutral");
+
+  const effects: Record<ResourceItemId, Consequence> = {
+    coffee: { time: 2, caffeine: 18, focus: 6, score: 5 },
+    snack: { time: 3, stamina: 14, focus: 4, score: 5 },
+    guideline_app: { time: 2, focus: 5, clinicalConfidence: 7, score: 10 },
+    abg_kit: { time: 1, focus: 3, patientSafety: 4, clinicalConfidence: 3 },
+    cannula_kit: { time: 1, stamina: 3, patientSafety: 4, reputation: 2 },
+    consultant_advice: { time: 4, patientSafety: 5, reputation: 4, clinicalConfidence: 5, consultantEscalations: 1 },
+    radiology_persuasion: { time: 2, reputation: 3, patientSafety: 3, score: 15 },
+    handover_notes: { time: 3, handoverQuality: 10, focus: 4, score: 20 },
+  };
+  let next = applyConsequence(state, effects[resourceId]);
+  next = { ...next, resources: changeResourceCharges(next.resources, resourceId, -1) };
+  if ((effects[resourceId].time ?? 0) > 0) next = runShiftDirector(next, effects[resourceId].time ?? 0);
+  return addLog(syncLegacyPagerIds(next), `Used resource: ${resource.label}.`, "good");
+}
+
+export function checkEnding(state: GameState): GameState {
+  if (state.ended) return state;
+  if (state.minute >= SHIFT_LENGTH && !state.handoverGrillingDone && !state.activeEncounterId) {
+    return addLog({ ...state, minute: SHIFT_LENGTH, activeEncounterId: "consultant_grilling", activeEncounterStepId: firstEncounterStepId("consultant_grilling"), locationId: "mau" }, "Surprise final task: consultant grilling at handover.", "bad");
+  }
+  if (state.minute >= SHIFT_LENGTH && state.activeEncounterId === "consultant_grilling") return { ...state, minute: SHIFT_LENGTH };
+  if (state.minute >= SHIFT_LENGTH) return { ...state, minute: SHIFT_LENGTH, ended: true, endingReason: "Morning handover reached." };
+  if (state.patientSafety <= 0) return { ...state, ended: true, endingReason: "Patient safety collapsed before handover." };
+  if (state.stamina <= 0 || state.focus <= 0) return { ...state, ended: true, endingReason: "Registrar collapse: fatigue and cognitive load won." };
+  if (state.oversight <= 0 && state.hospitalPressure > 80) return { ...state, ended: true, endingReason: "Oversight collapsed: the hospital ran away from you." };
+  if (state.hospitalPressure >= 100 && state.activeTasks.some((task) => ["critical", "high"].includes(task.trueUrgency))) return { ...state, ended: true, endingReason: "Hospital pressure overwhelmed the night team." };
+  return state;
+}
+
+export function endingRank(state: GameState): string {
+  const total = state.score + state.patientSafety * 6 + state.reputation * 3 + state.handoverQuality * 3 + state.oversight * 2 - state.dangerousDelays * 90 - state.datix * 60 - state.hospitalPressure * 2;
+  if (total >= 1000) return "Consultant Material";
+  if (total >= 760) return "Safe Pair of Hands";
+  if (total >= 540) return "Functioning Human";
+  if (total >= 340) return "Med Reg By Technicality";
+  if (total >= 150) return "Datix Magnet";
+  return "Please Attend Debrief";
+}
