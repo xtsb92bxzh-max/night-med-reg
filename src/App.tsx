@@ -1,14 +1,14 @@
 import { useMemo, useState } from "react";
 import { encounters, locations, taskTemplates, SHIFT_LENGTH } from "./content";
 import { activeEncounterView, chooseEncounterOption, deferPager, delegationDuration, delegatePager, endingRank, formatClock, ignorePager, initialGameState, isDelegationAppropriate, isTeamMemberAvailable, liveTasks, moveTo, orderedEncounterChoices, randomRunSeed, respondToPager, takeBreak, useResource } from "./game";
-import type { ActiveTask, Consequence, GameState, ResourceItemId, TeamMemberId } from "./types";
+import type { ActiveTask, Consequence, GameState, Location, LocationId, ResourceItemId, TeamMemberId } from "./types";
 
 const statRows: [string, keyof GameState][] = [
   ["Stamina", "stamina"],
   ["Focus", "focus"],
   ["Reputation", "reputation"],
-  ["Patient Safety", "patientSafety"],
-  ["Clinical Confidence", "clinicalConfidence"],
+  ["Safety", "patientSafety"],
+  ["Confidence", "clinicalConfidence"],
   ["Caffeine", "caffeine"],
 ];
 
@@ -35,83 +35,190 @@ function DeltaList({ consequence }: { consequence: Consequence }) {
   );
 }
 
+type CutawayRoom = {
+  floor: number;
+  col: number;
+  span: number;
+  label: string;
+  group: "acute" | "ward" | "critical" | "flow" | "support" | "core";
+};
+
+const cutawayRooms: Record<LocationId, CutawayRoom> = {
+  mess: { floor: 5, col: 2, span: 3, label: "Doctors' Mess", group: "support" },
+  estates: { floor: 5, col: 7, span: 4, label: "Estates", group: "support" },
+  respiratory: { floor: 4, col: 1, span: 3, label: "Resp", group: "ward" },
+  cardiology: { floor: 4, col: 4, span: 3, label: "Cardio", group: "ward" },
+  elderly: { floor: 4, col: 7, span: 3, label: "COTE", group: "ward" },
+  surgical: { floor: 4, col: 10, span: 3, label: "Surg", group: "ward" },
+  icu: { floor: 3, col: 1, span: 4, label: "ICU", group: "critical" },
+  radiology: { floor: 3, col: 8, span: 4, label: "Radiology / CT", group: "critical" },
+  mau: { floor: 2, col: 1, span: 6, label: "MAU", group: "flow" },
+  pharmacy: { floor: 2, col: 9, span: 3, label: "Pharmacy", group: "support" },
+  ed_resus: { floor: 1, col: 1, span: 4, label: "ED Resus", group: "acute" },
+  corridor: { floor: 1, col: 5, span: 4, label: "Main Corridor", group: "core" },
+  lifts: { floor: 1, col: 9, span: 3, label: "Lift Lobby", group: "core" },
+};
+
 function StatsPanel({ state, onRestart }: { state: GameState; onRestart: () => void }) {
   return (
-    <section className="panel stats-panel" aria-labelledby="stats-title">
-      <div className="panel-heading">
-        <h2 id="stats-title">Night Med Reg</h2>
-        <button className="ghost" onClick={onRestart}>Restart</button>
+    <section className="compact-status" aria-labelledby="stats-title">
+      <div className="brand-block">
+        <h1 id="stats-title">Night Med Reg</h1>
+        <span>Game only, not clinical guidance</span>
       </div>
-      <div className="clock">
+      <div className="clock compact-clock">
         <strong>{formatClock(state.minute)}</strong>
-        <span>{formatDuration(SHIFT_LENGTH - state.minute)} to 09:00 handover</span>
+        <span>{formatDuration(SHIFT_LENGTH - state.minute)} to 09:00</span>
       </div>
-      {statRows.map(([label, key]) => {
-        const value = Number(state[key]);
-        return (
-          <div className="meter-row" key={label}>
-            <span>{label}</span>
-            <div className="meter" aria-label={`${label} ${value}`}>
-              <b style={{ width: `${value}%` }} />
+      <div className="compact-meters">
+        {statRows.map(([label, key]) => {
+          const value = Number(state[key]);
+          return (
+            <div className="meter-row compact" key={label}>
+              <span>{label}</span>
+              <div className="meter" aria-label={`${label} ${value}`}>
+                <b style={{ width: `${value}%` }} />
+              </div>
+              <strong>{value}</strong>
             </div>
-            <strong>{value}</strong>
-          </div>
-        );
-      })}
-      <div className="score-grid">
+          );
+        })}
+      </div>
+      <div className="compact-scores">
         <span>Score <strong>{state.score}</strong></span>
         <span>Backlog <strong>{state.pagerBacklog}</strong></span>
-        <span>Datix <strong>{state.datix}</strong></span>
-        <span>Bird <strong>{state.birdStatus}</strong></span>
+        <span>Safety <strong>{state.patientSafety}</strong></span>
         <span>Pressure <strong>{state.hospitalPressure}</strong></span>
-        <span>Reg Sense <strong>{state.regSense}</strong></span>
         <span>Oversight <strong>{state.oversight}</strong></span>
+        <span>Bird <strong>{state.birdStatus}</strong></span>
+        <button className="ghost" onClick={onRestart}>Restart</button>
       </div>
     </section>
   );
 }
 
+function locationTaskSummary(state: GameState, locationId: LocationId) {
+  const tasks = liveTasks(state).filter((task) => task.locationId === locationId);
+  return {
+    total: tasks.length,
+    urgent: tasks.some((task) => ["critical", "high"].includes(task.trueUrgency)),
+    deteriorated: tasks.some((task) => task.status === "deteriorated"),
+  };
+}
+
+function LocationStatusBadges({ state, location }: { state: GameState; location: Location }) {
+  const taskSummary = locationTaskSummary(state, location.id);
+  const staleMinutes = Math.max(0, state.minute - state.locationLastVisited[location.id]);
+  const highAcuity = state.wardAcuity[location.id].level > 60;
+  return (
+    <span className="node-badges" aria-hidden="true">
+      {taskSummary.total > 0 && <b className={taskSummary.urgent || taskSummary.deteriorated ? "task-badge urgent" : "task-badge"}>{taskSummary.total}</b>}
+      {highAcuity && <b className="heat-badge">!</b>}
+      {staleMinutes > 28 && <b className="stale-badge">?</b>}
+    </span>
+  );
+}
+
+function CutawayRoomButton({ state, location, lockedByEncounter, isAnimating, animatingTo, onTravel }: { state: GameState; location: Location; lockedByEncounter: boolean; isAnimating: boolean; animatingTo?: LocationId; onTravel: (locationId: LocationId) => void }) {
+  const here = locations.find((item) => item.id === state.locationId)!;
+  const available = here.links.includes(location.id);
+  const current = location.id === here.id;
+  const movingHere = animatingTo === location.id;
+  const taskSummary = locationTaskSummary(state, location.id);
+  const stale = state.minute - state.locationLastVisited[location.id] > 28;
+  const hotAcuity = state.wardAcuity[location.id].level > 60;
+  const room = cutawayRooms[location.id];
+  const className = [
+    "cutaway-room",
+    room.group,
+    current ? "current" : "",
+    movingHere ? "moving-here" : "",
+    available ? "available" : "locked",
+    taskSummary.urgent || taskSummary.deteriorated ? "urgent" : "",
+    stale ? "stale" : "",
+    hotAcuity ? "hot" : "",
+  ].filter(Boolean).join(" ");
+  return (
+    <button
+      className={className}
+      style={{ gridColumn: `${room.col} / span ${room.span}` }}
+      disabled={!available || current || state.ended || lockedByEncounter || isAnimating}
+      onClick={() => onTravel(location.id)}
+      title={`${location.name}: ${location.quirk}`}
+      aria-label={`${location.name}${current ? ", current location" : ""}${taskSummary.total ? `, ${taskSummary.total} live task${taskSummary.total === 1 ? "" : "s"}` : ""}`}
+    >
+      <span>{room.label}</span>
+      <small>{location.timeCost}m</small>
+      <LocationStatusBadges state={state} location={location} />
+      {(current || movingHere) && <RegistrarMarker moving={movingHere} />}
+    </button>
+  );
+}
+
+function RegistrarMarker({ moving = false }: { moving?: boolean }) {
+  return (
+    <div className={moving ? "registrar-marker moving" : "registrar-marker"} aria-hidden="true">
+      <span className="registrar-dot" />
+      <strong>Med Reg</strong>
+    </div>
+  );
+}
+
+function HospitalSchematicMap({ state, lockedByEncounter, animatingTo, onTravel }: { state: GameState; lockedByEncounter: boolean; animatingTo?: LocationId; onTravel: (locationId: LocationId) => void }) {
+  const isAnimating = Boolean(animatingTo);
+  const floors = [5, 4, 3, 2, 1];
+  return (
+    <div className="cutaway-wrap" aria-label="Hospital cutaway map">
+      <div className="building-label" aria-hidden="true">Fictional NHS District General Hospital</div>
+      {floors.map((floor) => (
+        <div className="cutaway-floor" key={floor}>
+          <div className="floor-label">F{floor}</div>
+          <div className="floor-rooms">
+            {locations.filter((location) => cutawayRooms[location.id].floor === floor).map((location) => (
+              <CutawayRoomButton
+                key={location.id}
+                state={state}
+                location={location}
+                lockedByEncounter={lockedByEncounter}
+                isAnimating={isAnimating}
+                animatingTo={animatingTo}
+                onTravel={onTravel}
+              />
+            ))}
+            <div className="lift-core" aria-hidden="true">Lift / stairs</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MapPanel({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
+  const [animatingTo, setAnimatingTo] = useState<LocationId | undefined>();
   const here = locations.find((location) => location.id === state.locationId)!;
   const lockedByEncounter = Boolean(state.activeEncounterId);
   const staleCount = locations.filter((location) => state.minute - state.locationLastVisited[location.id] > 28).length;
+  const handleTravel = (locationId: LocationId) => {
+    if (animatingTo || lockedByEncounter || state.ended) return;
+    setAnimatingTo(locationId);
+    window.setTimeout(() => {
+      setState(moveTo(state, locationId));
+      setAnimatingTo(undefined);
+    }, 420);
+  };
   return (
     <section className="panel map-panel" aria-labelledby="map-title">
       <div className="panel-heading">
         <h2 id="map-title">Hospital Map</h2>
         <span className={`risk ${here.risk}`}>{here.risk}</span>
       </div>
+      <HospitalSchematicMap state={state} lockedByEncounter={lockedByEncounter} animatingTo={animatingTo} onTravel={handleTravel} />
       <div className="location-card">
         <h3>{here.name}</h3>
         <p>{here.flavour}</p>
-        <small>{here.quirk}</small>
-      </div>
-      <div className="acuity-grid" aria-label="Ward acuity">
-        {locations.filter((location) => ["volatile", "high", "moderate"].includes(location.risk)).map((location) => (
-          <span key={location.id} className={state.wardAcuity[location.id].level > 60 || state.minute - state.locationLastVisited[location.id] > 28 ? "acuity hot" : "acuity"}>
-            {location.name}: {state.wardAcuity[location.id].level} · seen {Math.max(0, state.minute - state.locationLastVisited[location.id])}m
-          </span>
-        ))}
       </div>
       {staleCount > 0 && <p className="oversight-warning">Oversight fading: {staleCount} area{staleCount === 1 ? "" : "s"} not recently reviewed.</p>}
       {lockedByEncounter && <p className="map-lock">Resolve the active challenge before moving on.</p>}
-      <div className="map-grid">
-        {locations.map((location) => {
-          const available = here.links.includes(location.id);
-          return (
-            <button
-              key={location.id}
-              className={location.id === here.id ? "map-node current" : "map-node"}
-              disabled={!available || location.id === here.id || state.ended || lockedByEncounter}
-              onClick={() => setState(moveTo(state, location.id))}
-              title={location.quirk}
-            >
-              <span>{location.name}</span>
-              <small>{location.timeCost}m</small>
-            </button>
-          );
-        })}
-      </div>
       {state.locationId === "mess" && state.activeTasks.length > 0 && <p className="map-lock">Hospital pressure will rise if you rest with unresolved live tasks.</p>}
       {state.locationId === "mess" && staleCount > 0 && <p className="oversight-warning">A mess break will cost oversight while other areas go unseen.</p>}
       {state.locationId === "mess" && <button className="primary wide" disabled={state.ended} onClick={() => setState(takeBreak(state))}>Take a nine-minute break</button>}
@@ -155,17 +262,18 @@ function DelegationControls({ state, task, setState, expanded, onToggle }: { sta
   );
 }
 
-function TaskPanel({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
+function TaskPanel({ state, setState, limit, compact = false }: { state: GameState; setState: (state: GameState) => void; limit?: number; compact?: boolean }) {
   const tasks = liveTasks(state);
+  const visibleTasks = typeof limit === "number" ? tasks.slice(0, limit) : tasks;
   const regSenseTasks = tasks.filter((task) => task.regSense);
   const [expandedDelegateTaskId, setExpandedDelegateTaskId] = useState<string | undefined>();
   return (
-    <section className="panel pager-panel" aria-labelledby="pager-title">
+    <section className={compact ? "panel pager-panel compact-panel" : "panel pager-panel"} aria-labelledby="pager-title">
       <div className="panel-heading">
-        <h2 id="pager-title">Bleep Stack</h2>
-        <span>{tasks.length} active</span>
+        <h2 id="pager-title">{compact ? "Priority Bleeps" : "Bleep Stack"}</h2>
+        <span>{tasks.length} active{limit && tasks.length > visibleTasks.length ? ` · top ${visibleTasks.length}` : ""}</span>
       </div>
-      {regSenseTasks.length > 0 && (
+      {regSenseTasks.length > 0 && !compact && (
         <div className="reg-sense-strip">
           <strong>Reg Sense</strong>
           <span>{regSenseTasks.length} vague concern{regSenseTasks.length === 1 ? "" : "s"} worth a look before they become bleeps.</span>
@@ -173,11 +281,11 @@ function TaskPanel({ state, setState }: { state: GameState; setState: (state: Ga
       )}
       <div className="pager-list">
         {tasks.length === 0 && <p className="muted">A rare silence. Deeply suspicious.</p>}
-        {tasks.map((task) => (
-          <article className={taskClass(task)} key={task.id}>
+        {visibleTasks.map((task) => (
+          <article className={compact ? `${taskClass(task)} compact` : taskClass(task)} key={task.id}>
             <div>
               <strong>{task.message}</strong>
-              <p>{task.sender} · {task.source.replace("_", " ")} · claimed {task.claimedUrgency} · true risk {task.trueUrgency}</p>
+              {!compact && <p>{task.sender} · {task.source.replace("_", " ")} · claimed {task.claimedUrgency} · true risk {task.trueUrgency}</p>}
               <small>
                 {task.status === "deteriorated" ? "overdue / Datix risk logged" : task.status} · received {state.minute - task.createdAt}m ago · {locations.find((location) => location.id === task.locationId)?.name} · {Math.max(0, task.dueAt - state.minute)}m to deterioration
               </small>
@@ -237,7 +345,7 @@ function EncounterPanel({ state, setState }: { state: GameState; setState: (stat
   );
 }
 
-function ResourcesPanel({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
+function ResourcesPanel({ state, setState, mode = "all" }: { state: GameState; setState: (state: GameState) => void; mode?: "all" | "team" | "resources" }) {
   const canUse = (resourceId: ResourceItemId) => {
     const resource = state.resources.find((item) => item.id === resourceId);
     if (!resource || resource.charges <= 0) return false;
@@ -247,35 +355,40 @@ function ResourcesPanel({ state, setState }: { state: GameState; setState: (stat
   };
   return (
     <section className="panel resources-panel" aria-labelledby="resources-title">
-      <h2 id="resources-title">Resources</h2>
-      <h3>Team</h3>
-      <div className="team-list">
-        {state.team.map((member) => (
-          <div key={member.id} className={member.busyUntil > state.minute ? "team-member busy" : "team-member"}>
-            <strong>{member.name}</strong>
-            <span>{member.busyUntil > state.minute ? `Busy ${member.busyUntil - state.minute}m` : "Available"}</span>
-            <small>{member.role}</small>
+      <h2 id="resources-title">{mode === "team" ? "Team" : mode === "resources" ? "Resources" : "Resources"}</h2>
+      {mode !== "resources" && (
+        <>
+          <div className="team-list">
+            {state.team.map((member) => (
+              <div key={member.id} className={member.busyUntil > state.minute ? "team-member busy" : "team-member"}>
+                <strong>{member.name}</strong>
+                <span>{member.busyUntil > state.minute ? `Busy ${member.busyUntil - state.minute}m` : "Available"}</span>
+                <small>{member.role}</small>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <div className="chips">
-        {state.allies.map((ally) => <span key={ally}>{ally}</span>)}
-      </div>
-      <div className="resource-grid">
-        {state.resources.map((resource) => (
-          <button
-            key={resource.id}
-            className="resource-button"
-            disabled={!canUse(resource.id)}
-            title={resource.description}
-            onClick={() => setState(useResource(state, resource.id))}
-          >
-            <strong>{resource.label}</strong>
-            <span>{resource.charges} left</span>
-            <small>{resource.description}</small>
-          </button>
-        ))}
-      </div>
+          <div className="chips">
+            {state.allies.map((ally) => <span key={ally}>{ally}</span>)}
+          </div>
+        </>
+      )}
+      {mode !== "team" && (
+        <div className="resource-grid">
+          {state.resources.map((resource) => (
+            <button
+              key={resource.id}
+              className="resource-button"
+              disabled={!canUse(resource.id)}
+              title={resource.description}
+              onClick={() => setState(useResource(state, resource.id))}
+            >
+              <strong>{resource.label}</strong>
+              <span>{resource.charges} left</span>
+              <small>{resource.description}</small>
+            </button>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -292,6 +405,54 @@ function LogPanel({ state }: { state: GameState }) {
           </li>
         ))}
       </ol>
+    </section>
+  );
+}
+
+function AcuityPanel({ state }: { state: GameState }) {
+  return (
+    <section className="panel details-panel" aria-labelledby="details-title">
+      <h2 id="details-title">Oversight And Acuity</h2>
+      <div className="acuity-grid" aria-label="Ward acuity">
+        {locations.filter((location) => ["volatile", "high", "moderate"].includes(location.risk)).map((location) => (
+          <span key={location.id} className={state.wardAcuity[location.id].level > 60 || state.minute - state.locationLastVisited[location.id] > 28 ? "acuity hot" : "acuity"}>
+            {location.name}: acuity {state.wardAcuity[location.id].level} · seen {Math.max(0, state.minute - state.locationLastVisited[location.id])}m ago
+          </span>
+        ))}
+      </div>
+      <div className="summary-grid">
+        <span>Pressure <strong>{state.hospitalPressure}</strong></span>
+        <span>Oversight <strong>{state.oversight}</strong></span>
+        <span>Reg Sense <strong>{state.regSense}</strong></span>
+        <span>Datix <strong>{state.datix}</strong></span>
+      </div>
+    </section>
+  );
+}
+
+type DrawerId = "resources" | "team" | "log" | "bleeps" | "details";
+
+function BottomDrawers({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
+  const [openDrawer, setOpenDrawer] = useState<DrawerId | undefined>();
+  const toggle = (drawer: DrawerId) => setOpenDrawer(openDrawer === drawer ? undefined : drawer);
+  return (
+    <section className="drawer-shell" aria-label="Secondary game panels">
+      <div className="drawer-tabs">
+        <button className={openDrawer === "resources" ? "active" : ""} onClick={() => toggle("resources")}>Resources</button>
+        <button className={openDrawer === "team" ? "active" : ""} onClick={() => toggle("team")}>Team</button>
+        <button className={openDrawer === "log" ? "active" : ""} onClick={() => toggle("log")}>Log</button>
+        <button className={openDrawer === "bleeps" ? "active" : ""} onClick={() => toggle("bleeps")}>All Bleeps</button>
+        <button className={openDrawer === "details" ? "active" : ""} onClick={() => toggle("details")}>Details</button>
+      </div>
+      {openDrawer && (
+        <div className="drawer-panel">
+          {openDrawer === "resources" && <ResourcesPanel state={state} setState={setState} mode="resources" />}
+          {openDrawer === "team" && <ResourcesPanel state={state} setState={setState} mode="team" />}
+          {openDrawer === "log" && <LogPanel state={state} />}
+          {openDrawer === "bleeps" && <TaskPanel state={state} setState={setState} />}
+          {openDrawer === "details" && <AcuityPanel state={state} />}
+        </div>
+      )}
     </section>
   );
 }
@@ -331,24 +492,21 @@ export default function App() {
 
   return (
     <main className="app">
-      <div className="top-strip">
-        <span>Fictional NHS DGH · Night shift · Game only, not clinical guidance</span>
-        <span>{currentEncounter ? "Challenge in front of you" : `${state.shiftPhase.replace("_", " ")} · next possible bleep ${formatDuration(Math.max(0, state.nextTaskSpawnAt - state.minute))}`}</span>
-      </div>
+      <StatsPanel state={state} onRestart={() => setState(newRun())} />
       <div className="layout">
-        <aside className="left-column">
-          <StatsPanel state={state} onRestart={() => setState(newRun())} />
-          <ResourcesPanel state={state} setState={setState} />
-        </aside>
         <section className="centre-column">
+          <div className="phase-strip">
+            <span>{currentEncounter ? "Challenge in front of you" : `${state.shiftPhase.replace("_", " ")} · next possible bleep ${formatDuration(Math.max(0, state.nextTaskSpawnAt - state.minute))}`}</span>
+            <span>Fictional NHS DGH · night shift</span>
+          </div>
           <EncounterPanel state={state} setState={setState} />
           <MapPanel state={state} setState={setState} />
         </section>
         <aside className="right-column">
-          <TaskPanel state={state} setState={setState} />
-          <LogPanel state={state} />
+          <TaskPanel state={state} setState={setState} limit={3} compact />
         </aside>
       </div>
+      <BottomDrawers state={state} setState={setState} />
       {state.ended && <EndScreen state={state} onRestart={() => setState(newRun())} />}
     </main>
   );
