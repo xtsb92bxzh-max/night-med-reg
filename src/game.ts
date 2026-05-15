@@ -99,6 +99,32 @@ function makeTask(template: TaskTemplate, state: GameState, id = template.id): A
   };
 }
 
+function isBirdTask(task: Pick<ActiveTask, "templateId" | "message">): boolean {
+  return /\b(bird|pigeon|duck|ducklings)\b/i.test(`${task.templateId} ${task.message}`);
+}
+
+function isBirdEncounter(encounter: Encounter): boolean {
+  return /\b(bird|pigeon|duck|ducklings|winged)\b/i.test(`${encounter.id} ${encounter.title} ${encounter.vignette}`);
+}
+
+function sightBirdIfNeeded<T extends { birdStatus: GameState["birdStatus"] }>(state: T): T {
+  return state.birdStatus === "unseen" ? { ...state, birdStatus: "sighted" } : state;
+}
+
+function resolveBirdTaskStatus(state: GameState, task: ActiveTask, outcome: "contained" | "loose" | "sighted"): GameState {
+  if (!isBirdTask(task)) return state;
+  if (outcome === "contained") return { ...state, birdStatus: "contained" };
+  if (outcome === "loose" && state.birdStatus !== "contained") return { ...state, birdStatus: "loose" };
+  return sightBirdIfNeeded(state);
+}
+
+function resolveBirdEncounterStatus(state: GameState, encounter: Encounter, choice: EncounterChoice): GameState {
+  if (!isBirdEncounter(encounter)) return state;
+  if (choice.id === "best" && !choice.unsafe) return { ...state, birdStatus: "contained" };
+  if (choice.unsafe && state.birdStatus !== "contained") return { ...state, birdStatus: "loose" };
+  return sightBirdIfNeeded(state);
+}
+
 function rebalanceDeterioration(template: TaskTemplate): number {
   const original = template.timeToDeterioration;
   if (template.trueUrgency === "critical") return clamp(original, 10, 25);
@@ -347,14 +373,13 @@ export function spawnTask(state: GameState): GameState {
   if (!template) return { ...state, rngSeed };
   const taskId = `${template.id}-${state.minute}-${rngSeed}`;
   const task = makeTask(template, { ...state, rngSeed }, taskId);
-  const next = syncLegacyPagerIds({
+  const next = syncLegacyPagerIds(resolveBirdTaskStatus({
     ...state,
     rngSeed,
     activeTasks: [...state.activeTasks, task],
     completedTaskIds: [...new Set([...state.completedTaskIds, template.id])],
     regSense: clamp(state.regSense + (task.regSense ? 6 : 1)),
-    birdStatus: task.templateId === "p_bird" && state.birdStatus === "unseen" ? "sighted" : state.birdStatus,
-  });
+  }, task, "sighted"));
   const label = task.regSense ? "Reg Sense" : task.source === "handover" ? "Handover" : task.source === "system" ? "System" : "Bleep";
   return addLog(next, `${label}: ${task.message}`, task.trueUrgency === "critical" ? "bad" : "neutral");
 }
@@ -374,8 +399,8 @@ function deteriorateTask(state: GameState, task: ActiveTask): GameState {
     activeTasks: next.activeTasks.map((item) => item.id === task.id ? { ...item, status: "deteriorated", deterioratedAt: next.minute, penaltyApplied: true, lastUpdatedAt: next.minute } : item),
     hospitalPressure: clamp(next.hospitalPressure + 8),
     regSense: task.regSense ? clamp(next.regSense - 8) : next.regSense,
-    birdStatus: task.templateId === "p_bird" ? "loose" : next.birdStatus,
   };
+  next = resolveBirdTaskStatus(next, task, "loose");
   next = alterWardAcuity(next, task.locationId, 12, 16);
   if (task.regSense && task.encounterId) {
     return addLog(syncLegacyPagerIds(next), `Reg Sense missed: ${task.message}. It is now overdue and unsafe.`, "bad");
@@ -425,7 +450,8 @@ function triggerLocationEncounter(state: GameState): GameState {
   if (state.activeEncounterId || state.ended) return state;
   const encounter = encounters.find((item) => item.locationId === state.locationId && !state.completedEncounterIds.includes(item.id));
   if (!encounter) return state;
-  return addLog({ ...state, activeEncounterId: encounter.id, activeEncounterStepId: firstEncounterStepId(encounter.id) }, `On arrival: ${encounter.title}`, encounter.category === "emergency" ? "bad" : "neutral");
+  const next = { ...state, activeEncounterId: encounter.id, activeEncounterStepId: firstEncounterStepId(encounter.id) };
+  return addLog(isBirdEncounter(encounter) ? sightBirdIfNeeded(next) : next, `On arrival: ${encounter.title}`, encounter.category === "emergency" ? "bad" : "neutral");
 }
 
 export function advanceTime(state: GameState, minutes: number): GameState {
@@ -462,7 +488,7 @@ function removeTask(state: GameState, task: ActiveTask): GameState {
 export function respondToPager(state: GameState, taskId: string): GameState {
   const task = findTask(state, taskId);
   if (!task || state.ended) return state;
-  let next = removeTask({ ...state, locationId: task.locationId, birdStatus: task.templateId === "p_bird" && state.birdStatus === "unseen" ? "sighted" : state.birdStatus }, task);
+  let next = removeTask(resolveBirdTaskStatus({ ...state, locationId: task.locationId }, task, "sighted"), task);
   next = advanceTime(next, 5);
   next = refreshOversightAt(next, task.locationId, task.regSense ? 10 : 7);
   next = alterWardAcuity(next, task.locationId, -8, -10);
@@ -471,7 +497,7 @@ export function respondToPager(state: GameState, taskId: string): GameState {
     return addLog(next, `You attend: ${task.message}`, "neutral");
   }
   next = applyConsequence(next, task.handledWell);
-  if (task.templateId === "p_bird") next = { ...next, birdStatus: "contained" };
+  next = resolveBirdTaskStatus(next, task, "contained");
   next = maybeAwardResource(next, task);
   return addLog(syncLegacyPagerIds(next), `Handled: ${task.message}`, "good");
 }
@@ -490,7 +516,7 @@ export function ignorePager(state: GameState, taskId: string): GameState {
   const task = findTask(state, taskId);
   if (!task || state.ended) return state;
   let next = applyConsequence(state, task.ignored);
-  if (task.templateId === "p_bird" && next.birdStatus !== "contained") next = { ...next, birdStatus: "loose" };
+  next = resolveBirdTaskStatus(next, task, "loose");
   next = removeTask(next, task);
   next = alterWardAcuity(next, task.locationId, ["critical", "high"].includes(task.trueUrgency) ? 10 : 3, task.vague ? 10 : 5);
   next = { ...next, hospitalPressure: clamp(next.hospitalPressure + (task.trueUrgency === "nonsense" ? -2 : 6)) };
@@ -520,11 +546,13 @@ export function delegatePager(state: GameState, taskId: string, memberId: TeamMe
   if (appropriate || !["critical", "high"].includes(task.trueUrgency)) {
     next = removeTask(next, task);
     if (appropriate) next = maybeAwardResource(next, task);
+    next = resolveBirdTaskStatus(next, task, appropriate ? "contained" : "loose");
   } else {
     next = {
       ...next,
       activeTasks: next.activeTasks.map((item) => item.id === task.id ? { ...item, status: "deferred", deferred: true, lastUpdatedAt: next.minute, dueAt: Math.max(next.minute + 4, item.dueAt - 10) } : item),
     };
+    next = resolveBirdTaskStatus(next, task, "loose");
   }
   next = alterWardAcuity(next, task.locationId, appropriate ? -4 : 5, appropriate ? -5 : 7);
   return addLog(next, appropriate ? `Delegated to ${member.name} for ${duration}m: ${task.message}` : `Poor delegation to ${member.name}: ${task.message}`, appropriate ? "good" : "bad");
@@ -635,6 +663,7 @@ export function chooseEncounterOption(state: GameState, choiceId: string): GameS
   };
   next = refreshOversightAt(next, encounter.locationId, choice.unsafe ? 1 : 6);
   next = alterWardAcuity(next, encounter.locationId, choice.unsafe ? 8 : -12, choice.unsafe ? 12 : -16);
+  next = resolveBirdEncounterStatus(next, encounter, choice);
   if (!choice.unsafe && choice.id === "best") next = maybeAwardEncounterResource(next, encounter);
   next = addLog(syncLegacyPagerIds(next), `${encounter.title}: ${choice.feedback}`, choice.unsafe ? "bad" : choice.id === "best" ? "good" : "neutral");
   if (encounter.id === "consultant_grilling") {

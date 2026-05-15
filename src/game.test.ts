@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { encounters, locations, pagerEvents, SHIFT_LENGTH, taskTemplates } from "./content";
 import { bleepPackTasks } from "./bleepPack";
-import { advanceTime, chooseEncounterOption, chooseWeighted, delegatePager, delegationDuration, endingRank, ignorePager, initialGameState, isDelegationAppropriate, orderedEncounterChoices, moveTo, respondToPager, takeBreak, useResource } from "./game";
+import { advanceTime, chooseEncounterOption, chooseWeighted, delegatePager, delegationDuration, endingRank, ignorePager, initialGameState, isDelegationAppropriate, orderedEncounterChoices, moveTo, respondToPager, spawnTask, takeBreak, useResource } from "./game";
 import type { GameState } from "./types";
 
 describe("Night Med Reg core logic", () => {
@@ -273,6 +273,27 @@ describe("Night Med Reg core logic", () => {
     const sighted = { ...initialGameState(), activeTasks: [baseTask], activePagerIds: [baseTask.id], birdStatus: "sighted" as const };
     expect(respondToPager(sighted, "bird-test").birdStatus).toBe("contained");
     expect(ignorePager(sighted, "bird-test").birdStatus).toBe("loose");
+  });
+
+  it("newer bird bleeps mark the bird as sighted as soon as they enter the stack", () => {
+    const base = initialGameState();
+    const existingTask = base.activeTasks[0];
+    const activeTasks = taskTemplates
+      .filter((template) => template.id !== "corridor_pigeon")
+      .map((template) => ({ ...existingTask, id: `existing-${template.id}`, templateId: template.id, locationId: template.locationId }));
+    const next = spawnTask({ ...base, locationId: "corridor", activeTasks, activePagerIds: activeTasks.map((task) => task.id), birdStatus: "unseen" });
+    expect(next.activeTasks.some((task) => task.templateId === "corridor_pigeon")).toBe(true);
+    expect(next.birdStatus).toBe("sighted");
+  });
+
+  it("newer bird bleeps can be contained or left loose", () => {
+    const base = initialGameState();
+    const pigeon = taskTemplates.find((task) => task.id === "corridor_pigeon")!;
+    const duck = taskTemplates.find((task) => task.id === "lifts_duck_family")!;
+    const pigeonTask = { ...base.activeTasks[0], ...pigeon, id: "pigeon-test", templateId: pigeon.id, encounterId: undefined, dueAt: 180, status: "new" as const, penaltyApplied: false };
+    const duckTask = { ...base.activeTasks[0], ...duck, id: "duck-test", templateId: duck.id, encounterId: undefined, dueAt: 180, status: "new" as const, penaltyApplied: false };
+    expect(respondToPager({ ...base, activeTasks: [pigeonTask], activePagerIds: [pigeonTask.id], birdStatus: "sighted" }, pigeonTask.id).birdStatus).toBe("contained");
+    expect(ignorePager({ ...base, activeTasks: [duckTask], activePagerIds: [duckTask.id], birdStatus: "sighted" }, duckTask.id).birdStatus).toBe("loose");
   });
 
   it("run ends at handover", () => {
