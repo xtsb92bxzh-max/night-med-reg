@@ -133,11 +133,50 @@ function rebalanceDeterioration(template: TaskTemplate): number {
   return clamp(Math.max(original + 50, 90), 90, 180);
 }
 
-function startingTasks(state: GameState): ActiveTask[] {
-  return ["p_sepsis", "p_drug_chart_blue", "t_reg_1"]
-    .map((id) => taskTemplates.find((template) => template.id === id))
-    .filter(Boolean)
-    .map((template) => makeTask(template!, state));
+function phaseAllowed(template: TaskTemplate, phase: ShiftPhase): boolean {
+  return !template.phases || template.phases.includes(phase);
+}
+
+function pickStartingTemplate(pool: TaskTemplate[], seed: number, usedIds: Set<string>): [TaskTemplate | undefined, number] {
+  return chooseWeighted(pool.filter((template) => !usedIds.has(template.id)), seed);
+}
+
+function startingTasks(state: GameState): [ActiveTask[], number] {
+  if (state.rngSeed === 92821) {
+    return [
+      ["p_sepsis", "p_drug_chart_blue", "t_reg_1"]
+        .map((id) => taskTemplates.find((template) => template.id === id))
+        .filter(Boolean)
+        .map((template) => makeTask(template!, state)),
+      state.rngSeed,
+    ];
+  }
+  const phase = shiftPhaseFor(state.minute);
+  const earlyTemplates = taskTemplates.filter((template) => phaseAllowed(template, phase));
+  const pools = [
+    earlyTemplates.filter((template) => ["critical", "high"].includes(template.trueUrgency) && template.source === "pager"),
+    earlyTemplates.filter((template) => template.regSense || template.source === "system" || template.category === "ambiguous"),
+    earlyTemplates.filter((template) => ["routine", "inappropriate", "absurd"].includes(template.category)),
+  ];
+  const usedIds = new Set<string>();
+  let seed = state.rngSeed;
+  const selected = pools.flatMap((pool) => {
+    const [template, nextSeed] = pickStartingTemplate(pool.length ? pool : earlyTemplates, seed, usedIds);
+    seed = nextSeed;
+    if (!template) return [];
+    usedIds.add(template.id);
+    return [template];
+  });
+  return [selected.map((template) => makeTask(template, state)), seed];
+}
+
+export function randomRunSeed(): number {
+  if (globalThis.crypto?.getRandomValues) {
+    const values = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(values);
+    return values[0] || 92821;
+  }
+  return (Date.now() ^ Math.floor(Math.random() * 4294967295)) >>> 0;
 }
 
 export function initialGameState(seed = 92821): GameState {
@@ -185,8 +224,8 @@ export function initialGameState(seed = 92821): GameState {
     log: [{ minute: 0, text: "21:00 handover complete. You are the medical registrar. The bleep has opinions.", tone: "neutral" }],
     ended: false,
   };
-  const activeTasks = startingTasks(base);
-  return { ...base, activeTasks, activePagerIds: activeTasks.map((task) => task.id) };
+  const [activeTasks, rngSeed] = startingTasks(base);
+  return { ...base, rngSeed, activeTasks, activePagerIds: activeTasks.map((task) => task.id) };
 }
 
 export function applyConsequence(state: GameState, consequence: Consequence): GameState {

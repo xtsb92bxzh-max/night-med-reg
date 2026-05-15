@@ -333,6 +333,12 @@ describe("Night Med Reg core logic", () => {
     expect(a).toEqual(b);
   });
 
+  it("different run seeds produce different opening bleep stacks", () => {
+    const a = initialGameState(92821).activeTasks.map((task) => task.templateId);
+    const b = initialGameState(123456789).activeTasks.map((task) => task.templateId);
+    expect(a).not.toEqual(b);
+  });
+
   it("data-driven encounters are valid", () => {
     expect(encounters.length).toBeGreaterThanOrEqual(25);
     expect(pagerEvents.length).toBeGreaterThanOrEqual(25);

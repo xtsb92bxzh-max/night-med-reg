@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { encounters, locations, taskTemplates, SHIFT_LENGTH } from "./content";
-import { activeEncounterView, chooseEncounterOption, deferPager, delegationDuration, delegatePager, endingRank, formatClock, ignorePager, initialGameState, isDelegationAppropriate, isTeamMemberAvailable, liveTasks, moveTo, orderedEncounterChoices, respondToPager, takeBreak, useResource } from "./game";
+import { activeEncounterView, chooseEncounterOption, deferPager, delegationDuration, delegatePager, endingRank, formatClock, ignorePager, initialGameState, isDelegationAppropriate, isTeamMemberAvailable, liveTasks, moveTo, orderedEncounterChoices, randomRunSeed, respondToPager, takeBreak, useResource } from "./game";
 import type { ActiveTask, Consequence, GameState, ResourceItemId, TeamMemberId } from "./types";
 
 const statRows: [string, keyof GameState][] = [
@@ -325,7 +325,8 @@ function EndScreen({ state, onRestart }: { state: GameState; onRestart: () => vo
 }
 
 export default function App() {
-  const [state, setState] = useState<GameState>(() => initialGameState());
+  const newRun = () => initialGameState(randomRunSeed());
+  const [state, setState] = useState<GameState>(() => newRun());
   const currentEncounter = useMemo(() => encounters.find((item) => item.id === state.activeEncounterId), [state.activeEncounterId]);
 
   return (
@@ -336,7 +337,7 @@ export default function App() {
       </div>
       <div className="layout">
         <aside className="left-column">
-          <StatsPanel state={state} onRestart={() => setState(initialGameState())} />
+          <StatsPanel state={state} onRestart={() => setState(newRun())} />
           <ResourcesPanel state={state} setState={setState} />
         </aside>
         <section className="centre-column">
@@ -348,7 +349,7 @@ export default function App() {
           <LogPanel state={state} />
         </aside>
       </div>
-      {state.ended && <EndScreen state={state} onRestart={() => setState(initialGameState())} />}
+      {state.ended && <EndScreen state={state} onRestart={() => setState(newRun())} />}
     </main>
   );
 }
