@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { encounters, locations, pagerEvents, SHIFT_LENGTH, taskTemplates } from "./content";
 import { bleepPackTasks } from "./bleepPack";
-import { advanceTime, chooseEncounterOption, chooseWeighted, delegatePager, delegationDuration, endingRank, ignorePager, initialGameState, isDelegationAppropriate, orderedEncounterChoices, moveTo, respondToPager, spawnTask, takeBreak, useResource } from "./game";
+import { advanceTime, brewCoffee, chooseEncounterOption, chooseWeighted, clarifyTask, deferPager, delegatePager, delegationDuration, endingRank, escalateTask, findSnack, handoverDebrief, handoverMemoryScore, ignorePager, initialGameState, isDelegationAppropriate, markTaskForHandover, orderedEncounterChoices, moveTo, respondToPager, spawnTask, takeBreak, useResource } from "./game";
 import type { GameState } from "./types";
 
 describe("Night Med Reg core logic", () => {
@@ -420,5 +420,99 @@ describe("Night Med Reg core logic", () => {
     }
     expect(state.ended || state.patientSafety < 55 || state.hospitalPressure > 75).toBe(true);
     expect(state.oversight).toBeLessThan(startingOversight);
+  });
+
+  it("clarifying a vague task improves intel and costs time", () => {
+    const state = initialGameState();
+    const task = state.activeTasks.find((item) => item.id === "t_reg_1")!;
+    const next = clarifyTask(state, task.id);
+    const clarified = next.activeTasks.find((item) => item.id === task.id)!;
+    expect(next.minute).toBeGreaterThan(state.minute);
+    expect(clarified.intelLevel).toBeGreaterThan(task.intelLevel);
+    expect(next.handoverMemory.clarifiedRisks.length).toBeGreaterThan(0);
+  });
+
+  it("deferring vague unresolved work worsens ward momentum", () => {
+    const state = initialGameState();
+    const task = state.activeTasks.find((item) => item.id === "t_reg_1")!;
+    const before = state.wardMomentum[task.locationId].pressure;
+    const next = deferPager(state, task.id);
+    expect(next.wardMomentum[task.locationId].pressure).toBeGreaterThan(before);
+    expect(next.handoverMemory.unresolvedRisks).toContain(task.message);
+  });
+
+  it("marking tasks improves handover memory", () => {
+    const state = initialGameState();
+    const task = state.activeTasks[0];
+    const next = markTaskForHandover(state, task.id);
+    expect(next.activeTasks.find((item) => item.id === task.id)?.markedForHandover).toBe(true);
+    expect(handoverMemoryScore(next)).toBeGreaterThan(handoverMemoryScore(state));
+  });
+
+  it("early escalation helps more cleanly than late escalation", () => {
+    const state = initialGameState();
+    const task = state.activeTasks.find((item) => item.id === "p_sepsis")!;
+    const early = escalateTask(state, task.id);
+    const lateState = { ...state, minute: task.dueAt - 2 };
+    const late = escalateTask(lateState, task.id);
+    expect(early.escalations[0].timing).toBe("early");
+    expect(late.escalations[0].timing).toBe("late");
+    expect(early.reputation).toBeGreaterThan(late.reputation);
+  });
+
+  it("good delegation improves trust and poor delegation reduces it", () => {
+    const state = initialGameState();
+    const good = delegatePager(state, "p_drug_chart_blue", "fy1");
+    const goodFy1 = good.team.find((member) => member.id === "fy1")!;
+    expect(goodFy1.trust).toBeGreaterThan(state.team.find((member) => member.id === "fy1")!.trust);
+
+    const poor = delegatePager(state, "p_sepsis", "fy1");
+    const poorFy1 = poor.team.find((member) => member.id === "fy1")!;
+    expect(poorFy1.trust).toBeLessThan(state.team.find((member) => member.id === "fy1")!.trust);
+  });
+
+  it("ward momentum influences task spawning toward hot wards", () => {
+    const base = initialGameState(2222);
+    let next: GameState = {
+      ...base,
+      activeTasks: [],
+      activePagerIds: [],
+      wardMomentum: {
+        ...base.wardMomentum,
+        respiratory: { tags: ["fragile", "quietlyUnsafe"], pressure: 95, lastShiftedAt: 0 },
+      },
+    };
+    const spawnedLocations: string[] = [];
+    for (let index = 0; index < 20; index += 1) {
+      next = spawnTask({ ...next, activeTasks: [], activePagerIds: [] });
+      if (next.activeTasks[0]) spawnedLocations.push(next.activeTasks[0].locationId);
+    }
+    expect(spawnedLocations).toContain("respiratory");
+  });
+
+  it("handover debrief reflects memory and unresolved risks", () => {
+    const state = markTaskForHandover(clarifyTask(initialGameState(), "t_reg_1"), "t_reg_1");
+    const debrief = handoverDebrief(state);
+    expect(debrief.length).toBe(4);
+    expect(debrief.join(" ")).toContain("Strongest handover point");
+    expect(handoverMemoryScore(state)).toBeGreaterThan(state.handoverQuality);
+  });
+
+  it("mess coffee is another caffeine route but still costs time", () => {
+    const state = { ...initialGameState(), locationId: "mess" as const };
+    const next = brewCoffee(state);
+    expect(next.minute).toBeGreaterThan(state.minute);
+    expect(next.caffeine).toBeGreaterThan(state.caffeine);
+    expect(next.focus).toBeGreaterThan(state.focus);
+  });
+
+  it("snack runs restore stamina from multiple low-risk locations", () => {
+    const corridor = { ...initialGameState(), locationId: "corridor" as const, stamina: 40 };
+    const next = findSnack(corridor);
+    expect(next.minute).toBeGreaterThan(corridor.minute);
+    expect(next.stamina).toBeGreaterThan(corridor.stamina);
+
+    const mau = { ...initialGameState(), locationId: "mau" as const, stamina: 40 };
+    expect(findSnack(mau)).toEqual(mau);
   });
 });

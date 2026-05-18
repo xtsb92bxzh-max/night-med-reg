@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { encounters, locations, taskTemplates, SHIFT_LENGTH } from "./content";
-import { activeEncounterView, chooseEncounterOption, deferPager, delegationDuration, delegatePager, endingRank, formatClock, ignorePager, initialGameState, isDelegationAppropriate, isTeamMemberAvailable, liveTasks, moveTo, orderedEncounterChoices, randomRunSeed, respondToPager, takeBreak, useResource } from "./game";
+import { activeEncounterView, brewCoffee, chooseEncounterOption, clarifyTask, deferPager, delegationDuration, delegatePager, endingRank, escalateEncounter, escalateTask, findSnack, formatClock, handoverDebrief, handoverMemoryScore, ignorePager, initialGameState, isDelegationAppropriate, isTeamMemberAvailable, liveTasks, markEncounterForHandover, markTaskForHandover, moveTo, orderedEncounterChoices, randomRunSeed, respondToPager, takeBreak, useResource } from "./game";
 import type { ActiveTask, Consequence, GameState, Location, LocationId, ResourceItemId, TeamMemberId } from "./types";
 
 const statRows: [string, keyof GameState][] = [
@@ -221,13 +221,24 @@ function MapPanel({ state, setState }: { state: GameState; setState: (state: Gam
       {lockedByEncounter && <p className="map-lock">Resolve the active challenge before moving on.</p>}
       {state.locationId === "mess" && state.activeTasks.length > 0 && <p className="map-lock">Hospital pressure will rise if you rest with unresolved live tasks.</p>}
       {state.locationId === "mess" && staleCount > 0 && <p className="oversight-warning">A mess break will cost oversight while other areas go unseen.</p>}
-      {state.locationId === "mess" && <button className="primary wide" disabled={state.ended} onClick={() => setState(takeBreak(state))}>Take a nine-minute break</button>}
+      {state.locationId === "mess" && (
+        <div className="recovery-actions">
+          <button className="primary wide" disabled={state.ended} onClick={() => setState(takeBreak(state))}>Take a nine-minute break</button>
+          <button disabled={state.ended} onClick={() => setState(brewCoffee(state))} title="+caffeine and focus, costs 3m">Make coffee</button>
+          <button disabled={state.ended} onClick={() => setState(findSnack(state))} title="+stamina and focus, costs 4m">Find snack</button>
+        </div>
+      )}
+      {["corridor", "lifts", "pharmacy"].includes(state.locationId) && (
+        <div className="recovery-actions">
+          <button disabled={state.ended} onClick={() => setState(findSnack(state))} title="+stamina, small focus boost, costs 4m">Try vending/snack run</button>
+        </div>
+      )}
     </section>
   );
 }
 
 function taskClass(task: ActiveTask): string {
-  return `pager ${task.trueUrgency} ${task.regSense ? "reg-sense-task" : ""} ${task.status === "deteriorated" ? "deteriorated" : ""}`;
+  return `pager ${task.trueUrgency} ${task.regSense ? "reg-sense-task" : ""} ${task.status === "deteriorated" ? "deteriorated" : ""} ${task.markedForHandover ? "handover-marked" : ""}`;
 }
 
 const delegateOrder: TeamMemberId[] = ["fy1", "trusted_fy2", "locum_no_login", "bed_manager"];
@@ -235,7 +246,7 @@ const delegateOrder: TeamMemberId[] = ["fy1", "trusted_fy2", "locum_no_login", "
 function DelegationControls({ state, task, setState, expanded, onToggle }: { state: GameState; task: ActiveTask; setState: (state: GameState) => void; expanded: boolean; onToggle: () => void }) {
   return (
     <>
-      <button className="ghost" onClick={onToggle} aria-expanded={expanded}>{expanded ? "Close delegation" : "Delegate"}</button>
+      <button className="ghost" onClick={onToggle} aria-expanded={expanded} title="Ask a team member to handle this bleep. Good fits clear the task; risky fits can create harm or delay.">{expanded ? "Close delegation" : "Delegate"}</button>
       {expanded && (
         <div className="delegate-grid" aria-label={`Delegate ${task.message}`}>
           {delegateOrder.map((memberId) => {
@@ -248,7 +259,7 @@ function DelegationControls({ state, task, setState, expanded, onToggle }: { sta
                 key={memberId}
                 className={appropriate ? "delegate-good" : "delegate-risk"}
                 disabled={!available}
-                title={`${member.name}: ${appropriate ? "appropriate" : "risky"} · ${duration}m`}
+                title={`${member.name}: ${appropriate ? "appropriate delegation clears pressure and builds trust" : "risky delegation may harm safety or bounce back"} · ${duration}m`}
                 onClick={() => setState(delegatePager(state, task.id, memberId))}
               >
                 {member.name}
@@ -287,11 +298,14 @@ function TaskPanel({ state, setState, limit, compact = false }: { state: GameSta
               <strong>{task.message}</strong>
               {!compact && <p>{task.sender} · {task.source.replace("_", " ")} · claimed {task.claimedUrgency} · true risk {task.trueUrgency}</p>}
               <small>
-                {task.status === "deteriorated" ? "overdue / Datix risk logged" : task.status} · received {state.minute - task.createdAt}m ago · {locations.find((location) => location.id === task.locationId)?.name} · {Math.max(0, task.dueAt - state.minute)}m to deterioration
+                {task.status === "deteriorated" ? "overdue / Datix risk logged" : task.status} · intel {task.intelLevel}/2{task.markedForHandover ? " · handover" : ""} · received {state.minute - task.createdAt}m ago · {locations.find((location) => location.id === task.locationId)?.name} · {Math.max(0, task.dueAt - state.minute)}m to deterioration
               </small>
             </div>
             <div className="pager-actions">
               <button onClick={() => setState(respondToPager(state, task.id))}>Attend</button>
+              <button onClick={() => setState(clarifyTask(state, task.id))} disabled={task.intelLevel >= 2}>Clarify</button>
+              <button onClick={() => setState(escalateTask(state, task.id))}>Escalate</button>
+              <button onClick={() => setState(markTaskForHandover(state, task.id))} disabled={task.markedForHandover} title="Flag this as something the day team should explicitly know about at 09:00">Handover</button>
               <button onClick={() => setState(deferPager(state, task.id))}>Defer</button>
               <button className="danger" onClick={() => setState(ignorePager(state, task.id))}>Ignore</button>
               <DelegationControls
@@ -324,7 +338,13 @@ function EncounterPanel({ state, setState }: { state: GameState; setState: (stat
   const choices = orderedEncounterChoices(state, encounter);
   return (
     <section className="panel encounter-panel active" aria-labelledby="encounter-title">
-      <h2 id="encounter-title">{encounter.title}</h2>
+      <div className="panel-heading">
+        <h2 id="encounter-title">{encounter.title}</h2>
+        <div className="encounter-actions">
+          <button className="ghost" onClick={() => setState(escalateEncounter(state))}>Escalate</button>
+          <button className="ghost" onClick={() => setState(markEncounterForHandover(state))} title="Flag this active patient problem for the morning handover">Handover</button>
+        </div>
+      </div>
       {step?.title && <h3>{step.title}</h3>}
       <p className="vignette">{display.vignette}</p>
       <div className="clinical-grid">
@@ -363,6 +383,7 @@ function ResourcesPanel({ state, setState, mode = "all" }: { state: GameState; s
               <div key={member.id} className={member.busyUntil > state.minute ? "team-member busy" : "team-member"}>
                 <strong>{member.name}</strong>
                 <span>{member.busyUntil > state.minute ? `Busy ${member.busyUntil - state.minute}m` : "Available"}</span>
+                <span>Trust {member.trust} · fatigue {member.fatigue} · jobs {member.recentDelegations}</span>
                 <small>{member.role}</small>
               </div>
             ))}
@@ -416,7 +437,7 @@ function AcuityPanel({ state }: { state: GameState }) {
       <div className="acuity-grid" aria-label="Ward acuity">
         {locations.filter((location) => ["volatile", "high", "moderate"].includes(location.risk)).map((location) => (
           <span key={location.id} className={state.wardAcuity[location.id].level > 60 || state.minute - state.locationLastVisited[location.id] > 28 ? "acuity hot" : "acuity"}>
-            {location.name}: acuity {state.wardAcuity[location.id].level} · seen {Math.max(0, state.minute - state.locationLastVisited[location.id])}m ago
+            {location.name}: acuity {state.wardAcuity[location.id].level} · momentum {state.wardMomentum[location.id].pressure} · {state.wardMomentum[location.id].tags.join(", ") || "steady"} · seen {Math.max(0, state.minute - state.locationLastVisited[location.id])}m ago
           </span>
         ))}
       </div>
@@ -425,6 +446,8 @@ function AcuityPanel({ state }: { state: GameState }) {
         <span>Oversight <strong>{state.oversight}</strong></span>
         <span>Reg Sense <strong>{state.regSense}</strong></span>
         <span>Datix <strong>{state.datix}</strong></span>
+        <span>Handover memory <strong>{handoverMemoryScore(state)}</strong></span>
+        <span>Escalations <strong>{state.escalations.length}</strong></span>
       </div>
     </section>
   );
@@ -464,12 +487,16 @@ function EndScreen({ state, onRestart }: { state: GameState; onRestart: () => vo
       <div className="end-card">
         <h2 id="end-title">{rank}</h2>
         <p>{state.endingReason}</p>
+        <div className="debrief-list" aria-label="Handover debrief">
+          {handoverDebrief(state).map((line) => <p key={line}>{line}</p>)}
+        </div>
         <div className="summary-grid">
           <span>Score <strong>{state.score}</strong></span>
           <span>Patients stabilised <strong>{state.patientsStabilised}</strong></span>
           <span>Emergencies handled <strong>{state.emergenciesHandled}</strong></span>
           <span>Dangerous delays <strong>{state.dangerousDelays}</strong></span>
           <span>Handover quality <strong>{state.handoverQuality}</strong></span>
+          <span>Handover memory <strong>{handoverMemoryScore(state)}</strong></span>
           <span>Breaks taken <strong>{state.breaksTaken}</strong></span>
           <span>NHS chaos survived <strong>{state.chaosSurvived}</strong></span>
           <span>Bird status <strong>{state.birdStatus}</strong></span>

@@ -29,6 +29,12 @@ export type TeamMemberId = "fy1" | "trusted_fy2" | "locum_no_login" | "bed_manag
 
 export type TaskStatus = "new" | "deferred" | "delegated" | "deteriorated" | "resolved";
 
+export type TaskIntelLevel = 0 | 1 | 2;
+
+export type EscalationTarget = "consultant" | "ICU" | "site" | "specialty" | "radiology";
+
+export type WardMomentumTag = "flow" | "fragile" | "understaffed" | "systemBlocked" | "quietlyUnsafe";
+
 export type ResourceItemId =
   | "coffee"
   | "snack"
@@ -147,6 +153,10 @@ export interface ActiveTask {
   vague: boolean;
   regSense: boolean;
   deferred: boolean;
+  intelLevel: TaskIntelLevel;
+  markedForHandover: boolean;
+  clarifiedAt?: number;
+  escalationHint?: EscalationTarget;
   ignored: Consequence;
   handledWell: Consequence;
   delegableTo?: TeamMemberId[];
@@ -193,6 +203,9 @@ export interface TeamMember {
   role: string;
   busyUntil: number;
   strengths: string[];
+  trust: number;
+  fatigue: number;
+  recentDelegations: number;
 }
 
 export interface ShiftLogEntry {
@@ -207,6 +220,33 @@ export interface ResourceItem {
   charges: number;
   description: string;
   usableWhen: "always" | "encounter" | "task";
+}
+
+export interface HandoverMemory {
+  notableRisks: string[];
+  unresolvedRisks: string[];
+  clarifiedRisks: string[];
+  escalations: string[];
+  deteriorations: string[];
+  wardHotSpots: LocationId[];
+  delegatedJobs: string[];
+  markedTasks: string[];
+  resolvedEncounters: string[];
+}
+
+export interface EscalationRecord {
+  id: string;
+  minute: number;
+  target: EscalationTarget;
+  subject: string;
+  locationId: LocationId;
+  timing: "early" | "late" | "premature";
+}
+
+export interface WardMomentumState {
+  tags: WardMomentumTag[];
+  pressure: number;
+  lastShiftedAt: number;
 }
 
 export interface GameState {
@@ -236,6 +276,7 @@ export interface GameState {
   completedTaskIds: string[];
   nextTaskSpawnAt: number;
   wardAcuity: Record<LocationId, WardAcuityState>;
+  wardMomentum: Record<LocationId, WardMomentumState>;
   regSense: number;
   hospitalPressure: number;
   oversight: number;
@@ -247,6 +288,8 @@ export interface GameState {
   activeEncounterId?: string;
   activeEncounterStepId?: string;
   handoverGrillingDone: boolean;
+  handoverMemory: HandoverMemory;
+  escalations: EscalationRecord[];
   team: TeamMember[];
   allies: string[];
   items: string[];
