@@ -157,6 +157,24 @@ describe("Night Med Reg core logic", () => {
     expect(next.inappropriateAvoided).toBeGreaterThan(state.inappropriateAvoided);
   });
 
+  it("pressure is manageable: handling routine work reduces it", () => {
+    const state = { ...initialGameState(), hospitalPressure: 70, nextTaskSpawnAt: 999 };
+    const next = respondToPager(state, "p_drug_chart_blue");
+    expect(next.hospitalPressure).toBeLessThan(state.hospitalPressure);
+  });
+
+  it("pressure is manageable: appropriate delegation reduces it", () => {
+    const state = { ...initialGameState(), hospitalPressure: 70 };
+    const next = delegatePager(state, "p_drug_chart_blue", "fy1");
+    expect(next.hospitalPressure).toBeLessThan(state.hospitalPressure);
+  });
+
+  it("pressure is manageable: a quiet break can cool the shift down", () => {
+    const state = { ...initialGameState(), locationId: "mess" as const, activeTasks: [], activePagerIds: [], hospitalPressure: 60, nextTaskSpawnAt: 999 };
+    const next = takeBreak(state);
+    expect(next.hospitalPressure).toBeLessThan(state.hospitalPressure);
+  });
+
   it("delegation occupies the selected team member", () => {
     const state = initialGameState();
     const next = delegatePager(state, "p_drug_chart_blue", "fy1");

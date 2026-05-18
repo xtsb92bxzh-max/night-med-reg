@@ -493,7 +493,7 @@ export default function App() {
   return (
     <main className="app">
       <StatsPanel state={state} onRestart={() => setState(newRun())} />
-      <div className="layout">
+      <div className={state.activeEncounterId ? "layout encounter-mode" : "layout"}>
         <section className="centre-column">
           <div className="phase-strip">
             <span>{currentEncounter ? "Challenge in front of you" : `${state.shiftPhase.replace("_", " ")} · next possible bleep ${formatDuration(Math.max(0, state.nextTaskSpawnAt - state.minute))}`}</span>

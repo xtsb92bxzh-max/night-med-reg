@@ -338,6 +338,23 @@ export function isDelegationAppropriate(task: ActiveTask, memberId: TeamMemberId
   return false;
 }
 
+function pressureReliefForTask(task: ActiveTask): number {
+  const urgencyRelief =
+    task.trueUrgency === "critical" ? 14 :
+    task.trueUrgency === "high" ? 10 :
+    task.trueUrgency === "medium" ? 6 :
+    task.trueUrgency === "low" ? 3 :
+    2;
+  const systemsRelief = task.source === "system" ? 3 : 0;
+  const regSenseRelief = task.regSense ? 3 : 0;
+  return urgencyRelief + systemsRelief + regSenseRelief;
+}
+
+function pressureDeltaForEncounterChoice(choice: EncounterChoice): number {
+  if (choice.unsafe) return 8;
+  return choice.id === "best" ? -12 : -6;
+}
+
 function alterWardAcuity(state: GameState, locationId: LocationId, levelDelta: number, riskDelta: number): GameState {
   const current = state.wardAcuity[locationId];
   return {
@@ -353,9 +370,13 @@ function alterWardAcuity(state: GameState, locationId: LocationId, levelDelta: n
 }
 
 function refreshOversightAt(state: GameState, locationId: LocationId, amount: number): GameState {
+  const wasStale = state.minute - state.locationLastVisited[locationId] > 28;
+  const acuity = state.wardAcuity[locationId];
+  const pressureRelief = wasStale ? 4 : acuity.level > 55 || acuity.unresolvedRisk > 30 ? 3 : amount >= 8 ? 2 : 1;
   return {
     ...state,
     oversight: clamp(state.oversight + amount),
+    hospitalPressure: clamp(state.hospitalPressure - pressureRelief),
     locationLastVisited: {
       ...state.locationLastVisited,
       [locationId]: state.minute,
@@ -459,10 +480,17 @@ function tickTaskDeterioration(state: GameState): GameState {
 
 export function runShiftDirector(state: GameState, elapsedMinutes: number): GameState {
   if (state.ended) return state;
+  const highRiskTasks = state.activeTasks.filter((task) => ["critical", "high"].includes(task.trueUrgency)).length;
+  const quietWellControlled = state.activeTasks.length <= 1 && highRiskTasks === 0 && state.oversight > 60;
+  const passivePressure =
+    Math.ceil(elapsedMinutes / 8) +
+    Math.max(0, state.activeTasks.length - 3) +
+    (state.locationId === "mess" && state.activeTasks.length > 0 ? 6 : 0) -
+    (quietWellControlled ? Math.ceil(elapsedMinutes / 15) : 0);
   let next = updateTeamAvailability({
     ...state,
     shiftPhase: shiftPhaseFor(state.minute),
-    hospitalPressure: clamp(state.hospitalPressure + Math.ceil(elapsedMinutes / 5) + Math.max(0, state.activeTasks.length - 2) * 2 + (state.locationId === "mess" && state.activeTasks.length > 0 ? 6 : 0)),
+    hospitalPressure: clamp(state.hospitalPressure + passivePressure),
     regSense: clamp(state.regSense + Math.ceil(elapsedMinutes / 8)),
   });
   next = applyOversightPressure(next, elapsedMinutes);
@@ -536,6 +564,7 @@ export function respondToPager(state: GameState, taskId: string): GameState {
     return addLog(next, `You attend: ${task.message}`, "neutral");
   }
   next = applyConsequence(next, task.handledWell);
+  next = { ...next, hospitalPressure: clamp(next.hospitalPressure - pressureReliefForTask(task)) };
   next = resolveBirdTaskStatus(next, task, "contained");
   next = maybeAwardResource(next, task);
   return addLog(syncLegacyPagerIds(next), `Handled: ${task.message}`, "good");
@@ -580,7 +609,7 @@ export function delegatePager(state: GameState, taskId: string, memberId: TeamMe
     ...next,
     team: next.team.map((item) => item.id === memberId ? { ...item, busyUntil: next.minute + duration } : item),
     completedTaskIds: [...new Set([...next.completedTaskIds, task.templateId])],
-    hospitalPressure: clamp(next.hospitalPressure + (appropriate ? -3 : 5)),
+    hospitalPressure: clamp(next.hospitalPressure + (appropriate ? -Math.max(3, Math.floor(pressureReliefForTask(task) / 2)) : 5)),
   };
   if (appropriate || !["critical", "high"].includes(task.trueUrgency)) {
     next = removeTask(next, task);
@@ -698,7 +727,7 @@ export function chooseEncounterOption(state: GameState, choiceId: string): GameS
     handoverGrillingDone: encounter.id === "consultant_grilling" ? true : next.handoverGrillingDone,
     completedEncounterIds: [...new Set([...next.completedEncounterIds, encounter.id])],
     resolvedPagerIds: [...next.resolvedPagerIds, `encounter:${encounter.id}`],
-    hospitalPressure: clamp(next.hospitalPressure + (choice.unsafe ? 6 : -5)),
+    hospitalPressure: clamp(next.hospitalPressure + pressureDeltaForEncounterChoice(choice)),
   };
   next = refreshOversightAt(next, encounter.locationId, choice.unsafe ? 1 : 6);
   next = alterWardAcuity(next, encounter.locationId, choice.unsafe ? 8 : -12, choice.unsafe ? 12 : -16);
@@ -715,7 +744,7 @@ export function takeBreak(state: GameState): GameState {
   if (state.locationId !== "mess" || state.ended) return state;
   const caffeineHit = state.items.includes("Coffee") ? 12 : 0;
   let next = applyConsequence(state, { time: 9, stamina: 16, focus: 10, caffeine: caffeineHit, breaksTaken: 1, score: state.activeTasks.length ? -10 : 20 });
-  next = { ...next, oversight: clamp(next.oversight - (state.activeTasks.length ? 8 : 4)) };
+  next = { ...next, oversight: clamp(next.oversight - (state.activeTasks.length ? 8 : 4)), hospitalPressure: clamp(next.hospitalPressure - (state.activeTasks.length ? 0 : 4)) };
   next = runShiftDirector(next, 9 + Math.min(8, state.activeTasks.length * 2 + state.breaksTaken));
   const warning = state.activeTasks.length ? "Hospital pressure rises while you rest; the bleep finds you anyway." : "You take nine protected-ish minutes in the mess.";
   return addLog(next, warning, state.activeTasks.length ? "bad" : "good");
