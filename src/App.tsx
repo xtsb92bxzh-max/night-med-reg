@@ -529,13 +529,22 @@ function useIsMobile() {
 function MobileHeader({ state, onRestart }: { state: GameState; onRestart: () => void }) {
   return (
     <header className="mobile-header">
-      <strong>Night Med Reg</strong>
-      <div className="mobile-clock-strip">
+      <div className="mob-brand">Night Med Reg</div>
+      <div className="mob-time">
         <strong>{formatClock(state.minute)}</strong>
-        <small>{formatDuration(SHIFT_LENGTH - state.minute)} left</small>
+        <small>{formatDuration(SHIFT_LENGTH - state.minute)}</small>
       </div>
-      <span className="mobile-safety">Safety {state.patientSafety}</span>
-      <button className="ghost" onClick={onRestart} aria-label="Restart game">↺</button>
+      <div className="mob-vitals">
+        <div className="mob-vital-row">
+          <span>Stam</span>
+          <div className="meter" aria-label={`Stamina ${state.stamina}`}><b style={{ width: `${state.stamina}%` }} /></div>
+        </div>
+        <div className="mob-vital-row">
+          <span>Safe</span>
+          <div className="meter" aria-label={`Safety ${state.patientSafety}`}><b style={{ width: `${state.patientSafety}%` }} /></div>
+        </div>
+      </div>
+      <button className="mob-restart" onClick={onRestart} aria-label="Restart game">↺</button>
     </header>
   );
 }
