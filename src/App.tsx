@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { encounters, locations, taskTemplates, SHIFT_LENGTH } from "./content";
 import { activeEncounterView, brewCoffee, chooseEncounterOption, clarifyTask, deferPager, delegationDuration, delegatePager, endingRank, escalateEncounter, escalateTask, findSnack, formatClock, handoverDebrief, handoverMemoryScore, ignorePager, initialGameState, isDelegationAppropriate, isTeamMemberAvailable, liveTasks, markEncounterForHandover, markTaskForHandover, moveTo, orderedEncounterChoices, randomRunSeed, respondToPager, takeBreak, useResource } from "./game";
 import type { ActiveTask, Consequence, GameState, Location, LocationId, ResourceItemId, TeamMemberId } from "./types";
@@ -512,10 +512,117 @@ function EndScreen({ state, onRestart }: { state: GameState; onRestart: () => vo
   );
 }
 
+type MobileTab = "map" | "encounter" | "tasks" | "info";
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 900);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 899px)");
+    const update = () => setIsMobile(mq.matches);
+    mq.addEventListener("change", update);
+    update();
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isMobile;
+}
+
+function MobileHeader({ state, onRestart }: { state: GameState; onRestart: () => void }) {
+  return (
+    <header className="mobile-header">
+      <strong>Night Med Reg</strong>
+      <div className="mobile-clock-strip">
+        <strong>{formatClock(state.minute)}</strong>
+        <small>{formatDuration(SHIFT_LENGTH - state.minute)} left</small>
+      </div>
+      <span className="mobile-safety">Safety {state.patientSafety}</span>
+      <button className="ghost" onClick={onRestart} aria-label="Restart game">↺</button>
+    </header>
+  );
+}
+
+function MobileInfoTab({ state, setState, onRestart }: { state: GameState; setState: (s: GameState) => void; onRestart: () => void }) {
+  return (
+    <div className="mobile-info-content">
+      <section className="panel">
+        <div className="panel-heading">
+          <h2>Shift Status</h2>
+          <button className="ghost" onClick={onRestart}>Restart</button>
+        </div>
+        <div className="clock">
+          <strong>{formatClock(state.minute)}</strong>
+          <span>{formatDuration(SHIFT_LENGTH - state.minute)} to 09:00</span>
+        </div>
+        {statRows.map(([label, key]) => {
+          const value = Number(state[key]);
+          return (
+            <div className="meter-row" key={label}>
+              <span>{label}</span>
+              <div className="meter" aria-label={`${label} ${value}`}>
+                <b style={{ width: `${value}%` }} />
+              </div>
+              <strong>{value}</strong>
+            </div>
+          );
+        })}
+        <div className="score-grid">
+          <span>Score <strong>{state.score}</strong></span>
+          <span>Backlog <strong>{state.pagerBacklog}</strong></span>
+          <span>Pressure <strong>{state.hospitalPressure}</strong></span>
+          <span>Oversight <strong>{state.oversight}</strong></span>
+          <span>Reg Sense <strong>{state.regSense}</strong></span>
+          <span>Bird <strong>{state.birdStatus}</strong></span>
+        </div>
+      </section>
+      <ResourcesPanel state={state} setState={setState} />
+      <LogPanel state={state} />
+      <AcuityPanel state={state} />
+    </div>
+  );
+}
+
+function MobileTabBar({ active, onChange, state }: { active: MobileTab; onChange: (tab: MobileTab) => void; state: GameState }) {
+  const taskCount = liveTasks(state).length;
+  const hasEncounter = Boolean(state.activeEncounterId);
+  return (
+    <nav className="mobile-tab-bar" aria-label="Game panels">
+      <button className={active === "map" ? "mob-tab active" : "mob-tab"} onClick={() => onChange("map")}>Map</button>
+      <button className={active === "encounter" ? "mob-tab active" : "mob-tab"} onClick={() => onChange("encounter")}>
+        {hasEncounter ? "Encounter ●" : "Encounter"}
+      </button>
+      <button className={active === "tasks" ? "mob-tab active" : "mob-tab"} onClick={() => onChange("tasks")}>
+        {taskCount > 0 ? `Bleeps ${taskCount}` : "Bleeps"}
+      </button>
+      <button className={active === "info" ? "mob-tab active" : "mob-tab"} onClick={() => onChange("info")}>Info</button>
+    </nav>
+  );
+}
+
 export default function App() {
   const newRun = () => initialGameState(randomRunSeed());
   const [state, setState] = useState<GameState>(() => newRun());
   const currentEncounter = useMemo(() => encounters.find((item) => item.id === state.activeEncounterId), [state.activeEncounterId]);
+  const isMobile = useIsMobile();
+  const [mobileTab, setMobileTab] = useState<MobileTab>("map");
+
+  useEffect(() => {
+    if (state.activeEncounterId) setMobileTab("encounter");
+  }, [state.activeEncounterId]);
+
+  if (isMobile) {
+    return (
+      <main className="app mobile-app">
+        <MobileHeader state={state} onRestart={() => setState(newRun())} />
+        <div className="mobile-content">
+          {mobileTab === "map" && <MapPanel state={state} setState={setState} />}
+          {mobileTab === "encounter" && <EncounterPanel state={state} setState={setState} />}
+          {mobileTab === "tasks" && <TaskPanel state={state} setState={setState} />}
+          {mobileTab === "info" && <MobileInfoTab state={state} setState={setState} onRestart={() => setState(newRun())} />}
+        </div>
+        <MobileTabBar active={mobileTab} onChange={setMobileTab} state={state} />
+        {state.ended && <EndScreen state={state} onRestart={() => setState(newRun())} />}
+      </main>
+    );
+  }
 
   return (
     <main className="app">
