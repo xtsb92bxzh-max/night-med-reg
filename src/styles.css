@@ -777,6 +777,10 @@ h3 {
   line-height: 1.35;
 }
 
+.compact-status {
+  display: none;
+}
+
 @media (min-width: 900px) {
   body {
     overflow: hidden;
@@ -1424,11 +1428,7 @@ h3 {
     padding: 0.75rem;
   }
 
-  .pager-actions,
-  .delegate-grid,
-  .acuity-grid,
-  .score-grid,
-  .summary-grid {
+  .acuity-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1456,5 +1456,196 @@ h3 {
 
   .meter-row {
     grid-template-columns: 1fr 80px 30px;
+  }
+}
+
+/* ── Mobile layout (< 900px) ── */
+.mobile-header,
+.mobile-tab-bar {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .mobile-app {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    height: 100vh;
+    height: 100svh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .mobile-header {
+    display: grid;
+    grid-template-columns: 1fr auto auto 40px;
+    gap: 0.65rem;
+    align-items: center;
+    padding: 0.55rem 0.85rem;
+    background: #005eb8;
+    color: #fff;
+  }
+
+  .mob-brand {
+    font-size: 0.82rem;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.88;
+    letter-spacing: 0.01em;
+  }
+
+  .mob-time {
+    display: grid;
+    gap: 0.04rem;
+    text-align: center;
+  }
+
+  .mob-time strong {
+    font-size: 1.12rem;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  .mob-time small {
+    font-size: 0.6rem;
+    opacity: 0.72;
+    white-space: nowrap;
+  }
+
+  .mob-vitals {
+    display: grid;
+    gap: 0.3rem;
+    width: 84px;
+  }
+
+  .mob-vital-row {
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    gap: 0.3rem;
+    align-items: center;
+    font-size: 0.6rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.82;
+  }
+
+  .mob-vital-row .meter {
+    height: 5px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 99px;
+  }
+
+  .mob-vital-row .meter b {
+    background: rgba(255, 255, 255, 0.85);
+  }
+
+  .mob-restart {
+    width: 40px;
+    min-height: 40px;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.25);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 1.05rem;
+    display: grid;
+    place-items: center;
+  }
+
+  .mobile-content {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.65rem;
+    min-height: 0;
+  }
+
+  .mobile-content > .panel,
+  .mobile-info-content > .panel {
+    margin-bottom: 0.65rem;
+  }
+
+  .mobile-info-content {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .mobile-tab-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: #f8faf9;
+    border-top: 1px solid #aebac0;
+    box-shadow: 0 -4px 12px rgba(20, 35, 45, 0.1);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .mob-tab {
+    min-height: 52px;
+    padding: 0.4rem 0.25rem;
+    border: none;
+    border-top: 3px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: #58676f;
+    font-size: 0.75rem;
+    font-weight: 800;
+    line-height: 1.2;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mob-tab.active {
+    color: #005eb8;
+    border-top-color: #005eb8;
+    background: #eef3f5;
+  }
+
+  button {
+    min-height: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Hospital map: horizontal scroll */
+  .cutaway-wrap {
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: auto;
+    min-height: 0;
+  }
+
+  .cutaway-floor {
+    grid-template-columns: 32px minmax(660px, 1fr);
+  }
+
+  /* Pager actions: 2-column for easier tapping */
+  .pager-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Delegate grid: 2-column */
+  .delegate-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Choices: larger touch targets */
+  .choice {
+    padding: 0.75rem;
+    min-height: 60px;
+  }
+
+  /* Score/summary: 2-column */
+  .score-grid,
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* End screen: scrollable on small screens */
+  .end-screen {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding-top: 1rem;
   }
 }
