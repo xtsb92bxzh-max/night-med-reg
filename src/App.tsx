@@ -665,14 +665,15 @@ function MobileHelpTab() {
         </ul>
 
         <h3 className="help-section-title">Resources</h3>
+        <p className="help-body">Tap a resource in the Info tab to use it. Items are only available when conditions are met.</p>
         <ul className="help-list">
-          <li><strong>Coffee</strong> — restores Stamina &amp; Caffeine</li>
-          <li><strong>Snack</strong> — small Stamina boost</li>
-          <li><strong>Guideline App</strong> — improves encounter choices</li>
-          <li><strong>ABG Kit</strong> — unlocks blood gas data</li>
-          <li><strong>Cannula Kit</strong> — enables IV access tasks</li>
-          <li><strong>Consultant Advice</strong> — escalation support</li>
-          <li><strong>Radiology Persuasion</strong> — helps get scans approved</li>
+          <li><strong>Coffee</strong> — usable any time; +Focus &amp; +Caffeine</li>
+          <li><strong>Snack</strong> — usable any time; +Stamina &amp; +Focus</li>
+          <li><strong>Guideline app</strong> — usable during an encounter; +Focus &amp; +Clinical Confidence</li>
+          <li><strong>ABG kit</strong> — usable during an encounter; respiratory/metabolic shortcut that boosts Focus, Safety &amp; Confidence</li>
+          <li><strong>Cannula kit</strong> — usable when tasks are active; +Stamina, +Safety &amp; +Reputation</li>
+          <li><strong>Consultant advice token</strong> — usable during an encounter; safer escalation on a hard case (+Safety, +Reputation, +Confidence)</li>
+          <li><strong>Radiology persuasion token</strong> — usable when tasks are active; +Reputation, +Safety &amp; +Score</li>
         </ul>
 
         <h3 className="help-section-title">Key Locations</h3>
