@@ -606,6 +606,178 @@ export const encounters: Encounter[] = [
       },
     ],
   },
+  {
+    id: "posterior_stemi",
+    title: "Anterior ST Depression With A Hidden Diagnosis",
+    locationId: "cardiology",
+    category: "emergency",
+    vignette: "A 61-year-old with hypertension and diabetes has had central chest pain radiating to the jaw for 90 minutes. The ECG is reported as anterior ischaemia by the referring team.",
+    observations: "HR 88, BP 156/94, SpO2 96% on air, pain 8/10, diaphoretic.",
+    examination: "No murmur, clear chest, equal peripheral pulses, no signs of failure.",
+    investigations: ["ECG ST depression V1–V3 with dominant R wave V2 and upright T waves, inferolateral Q waves", "First troponin 180 and rising", "Creatinine 102", "CXR no pulmonary oedema"],
+    choices: [
+      clinicalChoices.good(
+        "Recognise posterior STEMI equivalent, activate PPCI pathway immediately",
+        "ST depression V1–V3 with dominant R waves and upright T waves represents posterior ST elevation. This is a STEMI equivalent requiring immediate reperfusion, not NSTEMI management.",
+        "The cath lab team are surprised by the call, then grateful. Reperfusion time is preserved."
+      ),
+      clinicalChoices.partial(
+        "Treat as high-risk NSTEMI: dual antiplatelet, anticoagulation, early invasive strategy within 24 hours",
+        "Correct treatment for NSTEMI, but this is a STEMI equivalent. An early invasive strategy delays reperfusion by hours compared to PPCI activation now.",
+        "The patient waits for a morning list. The posterior territory sustains avoidable injury."
+      ),
+      clinicalChoices.unsafe(
+        "Start GTN infusion for ongoing pain and await second troponin before escalating",
+        "The ST changes are attributed to an anterior territory problem. The troponin trajectory will confirm things — eventually.",
+        "The posterior MI evolves without reperfusion. The second troponin is unambiguous but too late to change the outcome."
+      ),
+    ],
+  },
+  {
+    id: "wernicke_thiamine",
+    title: "Hypoglycaemia In The Alcohol Withdrawal Patient",
+    locationId: "mau",
+    category: "urgent",
+    vignette: "A nurse bleeps at 02:20. A 49-year-old admitted for alcohol withdrawal is now acutely confused. BM is 2.6. The nurse asks if she can give IV glucose now. You are at the other end of the hospital.",
+    observations: "BM 2.6, HR 94, BP 132/78, RR 16, SpO2 97%, confused but rousable, temperature 36.8.",
+    examination: "Nystagmus noted by the nurse on prompting. Last ate four days ago. Thiamine not yet charted on admission.",
+    investigations: ["BM 2.6", "Na 128, Mg 0.62", "Thiamine not prescribed on admission", "ALP 310, ALT 190, bilirubin 34"],
+    choices: [
+      {
+        id: "best",
+        label: "Go and review: give IV thiamine before glucose, assess for full Wernicke's triad",
+        detail: "Glucose before thiamine in a thiamine-deficient patient can precipitate acute Wernicke's encephalopathy. With nystagmus already present you need eyes on this patient to assess the full triad and determine whether MRI and neurology are needed.",
+        feedback: "You find nystagmus, mild ataxia, and confusion. IV Pabrinex goes in before glucose. The house officer learns something that outlasts the shift.",
+        resolves: true,
+        consequence: { time: 18, stamina: -9, focus: -6, reputation: 5, patientSafety: 10, clinicalConfidence: 8, score: 180, patientsStabilised: 1 },
+      },
+      {
+        id: "partial",
+        label: "Telephone advice: instruct nurse to give IV Pabrinex before glucose, safety-net, phone review",
+        detail: "You correctly prevent the glucose-before-thiamine error from a distance. You save the journey but cannot examine for the full Wernicke's triad or assess severity.",
+        feedback: "The glucose corrects after thiamine. Later it becomes clear the ophthalmoplegic component was more pronounced than the nurse conveyed. A second call is needed for neurology and MRI.",
+        resolves: true,
+        consequence: { time: 8, stamina: -3, focus: -4, reputation: 2, patientSafety: 4, clinicalConfidence: 2, score: 65 },
+      },
+      {
+        id: "unsafe",
+        label: "Advise IV glucose immediately for the hypoglycaemia, call again if not improved",
+        detail: "You address the low BM without accounting for thiamine deficiency in a malnourished patient with clear alcohol dependence.",
+        feedback: "Glucose goes in before thiamine. The acute confusion deepens. Wernicke's encephalopathy is later documented as an iatrogenic complication.",
+        unsafe: true,
+        resolves: true,
+        consequence: { time: 5, stamina: -2, focus: -4, reputation: -5, patientSafety: -15, clinicalConfidence: -2, score: -100, datix: 1, dangerousDelays: 1 },
+      },
+    ],
+  },
+  {
+    id: "ttp_thrombotic",
+    title: "Thrombocytopenia With Haemolysis And Confusion",
+    locationId: "mau",
+    category: "urgent",
+    vignette: "A 32-year-old woman with no haematological history is admitted with confusion, headache, and fatigue. The blood film report mentions red cell fragments. Haematology are not picking up overnight.",
+    observations: "HR 112, BP 142/88, RR 20, SpO2 97%, temperature 38.1, GCS 14.",
+    examination: "Petechiae on lower limbs, jaundiced sclerae, no splenomegaly, no lymphadenopathy.",
+    investigations: ["Hb 74 with schistocytes on film", "Platelets 18", "Creatinine 198", "LDH 1840", "Bilirubin 62 unconjugated", "Direct Coombs negative", "ADAMTS13 sent, result days away", "Coagulation screen normal"],
+    choices: [
+      clinicalChoices.good(
+        "Treat as TTP: escalate haematology urgently, arrange plasma exchange, withhold platelet transfusion",
+        "The combination of microangiopathic haemolytic anaemia, thrombocytopenia, AKI, fever, and neurological features makes TTP the working diagnosis. Platelet transfusion can worsen microvascular thrombosis. Normal coagulation differentiates from DIC. Plasma exchange cannot wait for ADAMTS13.",
+        "Haematology answers the second call. Plasma exchange starts overnight. The platelet transfusion that was ordered is intercepted in time."
+      ),
+      clinicalChoices.partial(
+        "Treat as sepsis with DIC: broad-spectrum antibiotics, FFP, haematology referral for morning",
+        "Sepsis-triggered DIC is a reasonable differential, but DIC typically causes coagulopathy and TTP-specific treatment cannot safely wait until morning when neurological features are present.",
+        "The FFP does not change the platelet count. Morning haematology identifies TTP on the film and plasma exchange is arranged urgently, delayed by hours."
+      ),
+      clinicalChoices.unsafe(
+        "Transfuse two units of platelets for the severe thrombocytopenia and observe",
+        "Standard response to a platelet count of 18 with petechiae. The film schistocyte report is in the system but has not been connected to a diagnosis.",
+        "The platelet count does not rise. The confusion worsens. Haematology are displeased in a way that is both educational and lasting."
+      ),
+    ],
+  },
+  {
+    id: "lithium_toxicity",
+    title: "Coarse Tremor And Confusion In A Long-Term Lithium Patient",
+    locationId: "elderly",
+    category: "urgent",
+    vignette: "A 67-year-old with bipolar affective disorder has taken lithium for 22 years. Their GP recently added bendroflumethiazide for newly diagnosed hypertension. They are now confused with a coarse tremor and vomiting.",
+    observations: "HR 78, BP 148/88, RR 16, SpO2 96%, GCS 12, Na 152.",
+    examination: "Coarse tremor, hyperreflexia, confusion without focal neurology, dry mucous membranes.",
+    investigations: ["Na 152", "Creatinine 182 from baseline 88", "Lithium level 2.4 mmol/L (therapeutic range 0.6–1.2)", "ECG sinus rhythm with flat T waves", "Urine output poor"],
+    choices: [
+      clinicalChoices.good(
+        "Stop lithium and thiazide, IV 0.9% saline to restore renal clearance, toxicology for dialysis threshold",
+        "Thiazide diuretics reduce renal lithium clearance and cause sodium depletion, driving cellular lithium uptake. Rehydration with 0.9% saline restores renal clearance. Forced diuresis and fluid restriction both worsen toxicity. Toxicology input is needed at level 2.4 with neurological features.",
+        "Lithium level begins to fall with rehydration alone. Toxicology advises against dialysis at current level but sets a threshold. The thiazide becomes a GP education opportunity."
+      ),
+      clinicalChoices.partial(
+        "Reduce lithium dose by half, give IV fluids, repeat level in the morning",
+        "Dose reduction is logical but insufficient for a level of 2.4 with neurological features. Active treatment and toxicology advice are needed tonight, not dose adjustment with a morning plan.",
+        "The tremor persists. Creatinine rises overnight. The level is not rechecked until 08:00."
+      ),
+      clinicalChoices.unsafe(
+        "Restrict fluids for the hypernatraemia and refer to endocrine for possible SIADH",
+        "The hypernatraemia here reflects dehydration compounding lithium retention, not SIADH. Fluid restriction further reduces renal lithium clearance and worsens toxicity.",
+        "Lithium level rises further on fluid restriction. The confusion deepens. Renal are called for emergency review."
+      ),
+    ],
+  },
+  {
+    id: "beta_blocker_overdose",
+    title: "Bradycardic Collapse With An Unreliable History",
+    locationId: "ed_resus",
+    category: "emergency",
+    vignette: "A 58-year-old is brought in collapsed at home. The partner cannot name the medications but hands over a pill packet. The patient is barely rousable. A pill packet labelled atenolol is found beside the bed; the number remaining is unclear.",
+    observations: "HR 36, BP 76/44, RR 18, SpO2 94% on 15L, GCS 9, glucose 8.4.",
+    examination: "Cool peripheries, no focal neurology, no obvious trauma, no pulmonary oedema.",
+    investigations: ["ECG sinus bradycardia, PR 260ms, QRS 110ms, no ST changes", "VBG pH 7.22, lactate 6.1", "K 5.2, glucose 8.4", "Creatinine 112", "Troponin pending"],
+    choices: [
+      clinicalChoices.good(
+        "Treat as beta-blocker toxicity: glucagon, high-dose insulin euglycaemia therapy, calcium, NPIS call, pacing standby",
+        "Standard vasopressors and atropine have limited efficacy in beta-blocker toxicity. High-dose insulin improves myocardial glucose metabolism. Glucagon bypasses beta-receptors. Lipid emulsion if a lipophilic agent is suspected. Call NPIS before things deteriorate further.",
+        "NPIS confirms the approach. The rhythm responds slowly to insulin-dextrose infusion. Pacing is prepared but not required. The toxicologist has encountered this before."
+      ),
+      clinicalChoices.partial(
+        "Atropine, IV fluid bolus, and dobutamine while arranging echo and ICU transfer",
+        "A reasonable initial approach to bradycardic shock, but atropine alone rarely reverses beta-blocker toxicity and dobutamine's effect is blunted by receptor antagonism. Specific antidotes are delayed.",
+        "The bradycardia partially responds. ICU escalates to glucagon after calling NPIS themselves, later than optimal."
+      ),
+      clinicalChoices.unsafe(
+        "Broad-spectrum antibiotics, noradrenaline infusion, and a septic shock workup pending full history",
+        "The bradycardia, pill packet, and combined lactic acidosis with bradycardia point to a toxidrome rather than sepsis. Noradrenaline has limited benefit without addressing the mechanism and delays the specific treatment.",
+        "Noradrenaline provides partial pressure support. The toxidrome is identified an hour later by the ICU team."
+      ),
+    ],
+  },
+  {
+    id: "phaeochromocytoma_crisis",
+    title: "Hypertensive Crisis With Episodic Symptoms",
+    locationId: "mau",
+    category: "urgent",
+    vignette: "A 38-year-old is referred from their GP with BP 226/134 and severe headache. They describe months of episodic sweating, palpitations, and anxiety attacks lasting 20–30 minutes. No regular medications.",
+    observations: "HR 118, BP 228/136, RR 20, SpO2 98%, profusely sweating, visibly anxious.",
+    examination: "No papilloedema, no focal neurology, no murmur, labile BP on repeated measurements ranging 180–240 systolic.",
+    investigations: ["ECG sinus tachycardia with LVH voltage changes", "Na 138, K 3.6, creatinine 98", "Glucose 12.4", "Urine dipstick normal", "Plasma metanephrines not yet sent"],
+    choices: [
+      clinicalChoices.good(
+        "Suspect phaeochromocytoma: alpha-blockade first, avoid beta-blockers until alpha-blocked, endocrine referral",
+        "The episodic triad of hypertension, sweating, and palpitations with labile BP and stress hyperglycaemia raises phaeochromocytoma. Beta-blockade before adequate alpha-blockade causes unopposed alpha-adrenergic stimulation and can precipitate a worse hypertensive crisis. Phentolamine IV or oral phenoxybenzamine. Send plasma metanephrines.",
+        "Endocrinology are engaged. Alpha-blockade is started safely. CT abdomen eventually confirms an adrenal mass. Beta-blockade is added afterwards without incident."
+      ),
+      clinicalChoices.partial(
+        "IV labetalol infusion for hypertensive crisis, urgent CT for secondary hypertension cause",
+        "Labetalol has combined alpha and beta activity but is predominantly beta in its effect. In phaeochromocytoma, predominantly beta-blocking agents can worsen hypertension through unopposed alpha stimulation. CT is appropriate but treatment sequence matters.",
+        "BP rises transiently after labetalol. Endocrinology are called when the adrenal mass is found on CT."
+      ),
+      clinicalChoices.unsafe(
+        "IV metoprolol to control the heart rate before addressing blood pressure",
+        "Pure beta-blockade before alpha-blockade in phaeochromocytoma causes unopposed alpha-adrenergic stimulation. It can precipitate a severe hypertensive crisis.",
+        "BP rises to 268 systolic within minutes of metoprolol. The room fills with people very quickly. Phentolamine is located after a tense conversation with pharmacy."
+      ),
+    ],
+  },
   ...scenarioPackEncounters,
 ];
 
@@ -637,6 +809,12 @@ export const pagerEvents: PagerEvent[] = [
   { id: "p_missing_chart", locationId: "surgical", message: "Missing drug chart; patient due Parkinson's meds", sender: "Surgical nurse", claimedUrgency: "urgent", trueUrgency: "medium", timeToDeterioration: 35, category: "ambiguous", ignored: { patientSafety: -7, reputation: -2 }, handledWell: { reputation: 3, score: 25 } },
   { id: "p_epr_down", locationId: "corridor", message: "EPR downtime. Nobody can see bloods unless they remember paper.", sender: "Site practitioner", claimedUrgency: "hospital-wide", trueUrgency: "medium", timeToDeterioration: 60, category: "routine", ignored: { focus: -3, pagerBacklog: 1 }, handledWell: { chaosSurvived: 2, handoverQuality: 2 } },
   { id: "p_cannulas", locationId: "mau", message: "There are no pink cannulas in the cupboard. Only vibes.", sender: "FY1", claimedUrgency: "urgent", trueUrgency: "medium", timeToDeterioration: 50, category: "routine", ignored: { stamina: -2, reputation: -1 }, handledWell: { time: 5, reputation: 2, chaosSurvived: 1 } },
+  { id: "p_post_stemi", locationId: "cardiology", message: "Cardiology: chest pain ongoing, ECG shows anterior ST depression. Troponin rising.", sender: "Cardiology FY1", claimedUrgency: "urgent", trueUrgency: "critical", timeToDeterioration: 20, category: "emergency", encounterId: "posterior_stemi", ignored: { patientSafety: -24, dangerousDelays: 1, datix: 1 }, handledWell: { score: 80, clinicalConfidence: 4 } },
+  { id: "p_wernicke", locationId: "mau", message: "MAU: alcohol withdrawal patient confused, BM 2.6, nurse asking about glucose.", sender: "MAU nurse", claimedUrgency: "urgent", trueUrgency: "high", timeToDeterioration: 25, category: "urgent", encounterId: "wernicke_thiamine", ignored: { patientSafety: -16, dangerousDelays: 1, datix: 1 }, handledWell: { clinicalConfidence: 4, score: 60 } },
+  { id: "p_ttp", locationId: "mau", message: "MAU: thrombocytopenia, haemolysis on film, patient confused. Haematology not answering.", sender: "MAU FY1", claimedUrgency: "urgent", trueUrgency: "high", timeToDeterioration: 30, category: "urgent", encounterId: "ttp_thrombotic", ignored: { patientSafety: -18, dangerousDelays: 1 }, handledWell: { score: 65, clinicalConfidence: 3 } },
+  { id: "p_lithium", locationId: "elderly", message: "Care of elderly: patient on lithium confused and trembling. GP recently added a blood pressure tablet.", sender: "Elderly care nurse", claimedUrgency: "review when possible", trueUrgency: "high", timeToDeterioration: 40, category: "ambiguous", encounterId: "lithium_toxicity", ignored: { patientSafety: -14, dangerousDelays: 1 }, handledWell: { clinicalConfidence: 3, score: 55 } },
+  { id: "p_bbo", locationId: "ed_resus", message: "ED resus: bradycardic collapse, BP 76/44, partner found pill packets.", sender: "ED registrar", claimedUrgency: "crash call", trueUrgency: "critical", timeToDeterioration: 12, category: "emergency", encounterId: "beta_blocker_overdose", ignored: { patientSafety: -26, dangerousDelays: 1, consultantEscalations: 1 }, handledWell: { score: 75, clinicalConfidence: 4 } },
+  { id: "p_pheo", locationId: "mau", message: "MAU: hypertensive crisis, BP 228/136, months of episodic sweating and palpitations.", sender: "Admitting nurse", claimedUrgency: "urgent", trueUrgency: "high", timeToDeterioration: 35, category: "ambiguous", encounterId: "phaeochromocytoma_crisis", ignored: { patientSafety: -14, dangerousDelays: 1 }, handledWell: { clinicalConfidence: 4, score: 55 } },
 ];
 
 const extraTaskTemplates: TaskTemplate[] = [
