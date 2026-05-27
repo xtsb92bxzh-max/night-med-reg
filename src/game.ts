@@ -85,10 +85,9 @@ function initialResources(): ResourceItem[] {
     { id: "snack", label: "Snack", charges: 1, description: "+stamina, +focus, 3m", usableWhen: "always" },
     { id: "guideline_app", label: "Guideline app", charges: 2, description: "Clinical confidence during an encounter", usableWhen: "encounter" },
     { id: "abg_kit", label: "ABG kit", charges: 1, description: "Respiratory/metabolic shortcut", usableWhen: "encounter" },
-    { id: "cannula_kit", label: "Cannula kit", charges: 1, description: "Urgent patient setup", usableWhen: "task" },
+    { id: "cannula_kit", label: "Cannula kit", charges: 1, description: "Use when juggling tasks: +stamina, +patient safety, +reputation, 1m", usableWhen: "task" },
     { id: "consultant_advice", label: "Consultant advice token", charges: 1, description: "Safer escalation on a hard case", usableWhen: "encounter" },
-    { id: "radiology_persuasion", label: "Radiology persuasion token", charges: 1, description: "A cleaner CT conversation", usableWhen: "task" },
-    { id: "handover_notes", label: "Handover notes", charges: 1, description: "Boost handover quality", usableWhen: "always" },
+    { id: "radiology_persuasion", label: "Radiology persuasion token", charges: 1, description: "Use while tasks are active: +reputation, +patient safety, +score, 2m", usableWhen: "task" },
   ];
 }
 
@@ -1116,7 +1115,6 @@ function maybeAwardEncounterResource(state: GameState, encounter: Encounter): Ga
   const award: ResourceItemId | undefined =
     encounter.locationId === "radiology" ? "radiology_persuasion" :
     ["copd_hypercapnia", "dka", "aki_hyperkalaemia"].includes(encounter.id) ? "abg_kit" :
-    encounter.id === "consultant_grilling" ? "handover_notes" :
     undefined;
   if (!award) return state;
   return { ...state, resources: changeResourceCharges(state.resources, award, 1) };
@@ -1136,7 +1134,6 @@ export function useResource(state: GameState, resourceId: ResourceItemId): GameS
     cannula_kit: { time: 1, stamina: 3, patientSafety: 4, reputation: 2 },
     consultant_advice: { time: 4, patientSafety: 5, reputation: 4, clinicalConfidence: 5, consultantEscalations: 1 },
     radiology_persuasion: { time: 2, reputation: 3, patientSafety: 3, score: 15 },
-    handover_notes: { time: 3, handoverQuality: 10, focus: 4, score: 20 },
   };
   let next = applyConsequence(state, effects[resourceId]);
   next = { ...next, resources: changeResourceCharges(next.resources, resourceId, -1) };

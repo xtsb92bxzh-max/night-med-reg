@@ -42,8 +42,7 @@ export type ResourceItemId =
   | "abg_kit"
   | "cannula_kit"
   | "consultant_advice"
-  | "radiology_persuasion"
-  | "handover_notes";
+  | "radiology_persuasion";
 
 export type Consequence = Partial<{
   time: number;
