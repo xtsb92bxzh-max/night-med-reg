@@ -72,7 +72,7 @@ function initialLocationLastVisited(): Record<LocationId, number> {
 
 function initialTeam(): TeamMember[] {
   return [
-    { id: "fy1", name: "FY1", role: "Keen, overloaded, good for contained jobs", busyUntil: 0, strengths: ["routine jobs", "simple prescribing", "low-risk reviews"], trust: 54, fatigue: 18, recentDelegations: 0 },
+    { id: "fy1", name: "FY1", role: "Keen, overloaded, good for contained jobs", busyUntil: 0, strengths: ["routine jobs", "simple prescribing", "low-risk reviews"], trust: 60, fatigue: 18, recentDelegations: 0 },
     { id: "trusted_fy2", name: "Trusted FY2", role: "Solid with sick-ish patients if briefed well", busyUntil: 0, strengths: ["urgent reviews", "handover jobs", "clear escalation"], trust: 68, fatigue: 22, recentDelegations: 0 },
     { id: "locum_no_login", name: "Locum without login", role: "Clinically useful, digitally cursed", busyUntil: 0, strengths: ["bedside assessment", "practical ward help"], trust: 42, fatigue: 28, recentDelegations: 0 },
     { id: "bed_manager", name: "Bed manager", role: "Flow, beds, transport, and applied diplomacy", busyUntil: 0, strengths: ["flow", "systems", "logistics"], trust: 58, fatigue: 20, recentDelegations: 0 },
@@ -357,10 +357,10 @@ export function handoverMemoryScore(state: GameState): number {
   const markedLiveTasks = state.activeTasks.filter((task) => task.markedForHandover).length;
   return clamp(
     state.handoverQuality +
-      memory.markedTasks.length * 4 +
+      memory.markedTasks.length * 2 +
       memory.clarifiedRisks.length * 3 +
       memory.escalations.length * 3 +
-      memory.resolvedEncounters.length * 2 +
+      memory.resolvedEncounters.length * 3 +
       markedLiveTasks * 4 -
       memory.deteriorations.length * 3 -
       Math.max(0, state.activeTasks.filter((task) => ["critical", "high"].includes(task.trueUrgency) && !task.markedForHandover).length - 1) * 5,
@@ -444,6 +444,7 @@ export function delegationDuration(task: ActiveTask, memberId: TeamMemberId): nu
   if (explicit) return Math.max(20, Math.min(34, explicit));
   const base = task.trueUrgency === "critical" ? 30 : task.trueUrgency === "high" ? 28 : task.trueUrgency === "medium" ? 24 : 20;
   const adjusted =
+    memberId === "locum_no_login" && task.encounterId ? base - 3 :
     memberId === "locum_no_login" && (task.source === "system" || ["routine", "inappropriate"].includes(task.category)) ? base + 6 :
     memberId === "bed_manager" && task.source === "system" ? base - 3 :
     memberId === "bed_manager" ? base + 4 :
@@ -467,7 +468,7 @@ export function isDelegationAppropriate(task: ActiveTask, memberId: TeamMemberId
   if (task.riskyDelegateTo?.includes(memberId)) return false;
   if (task.regSense || task.source === "reg_sense") return false;
   if (task.trueUrgency === "critical") return false;
-  if (memberId === "fy1") return ["low", "nonsense"].includes(task.trueUrgency) || (task.trueUrgency === "medium" && ["routine", "inappropriate", "absurd"].includes(task.category));
+  if (memberId === "fy1") return ["low", "nonsense"].includes(task.trueUrgency) || (task.trueUrgency === "medium" && ["routine", "inappropriate", "absurd"].includes(task.category)) || (task.trueUrgency === "high" && task.category === "routine");
   if (memberId === "trusted_fy2") return task.category !== "emergency";
   if (memberId === "locum_no_login") return Boolean(task.encounterId) || task.source === "system" || task.trueUrgency === "medium";
   if (memberId === "bed_manager") return task.source === "system" || ["routine", "inappropriate", "absurd"].includes(task.category) || task.locationId === "mau";
@@ -509,7 +510,7 @@ function refreshOversightAt(state: GameState, locationId: LocationId, amount: nu
   const wasStale = state.minute - state.locationLastVisited[locationId] > 28;
   const acuity = state.wardAcuity[locationId];
   const pressureRelief = wasStale ? 4 : acuity.level > 55 || acuity.unresolvedRisk > 30 ? 3 : amount >= 8 ? 2 : 1;
-  return {
+  const next = {
     ...state,
     oversight: clamp(state.oversight + amount),
     hospitalPressure: clamp(state.hospitalPressure - pressureRelief),
@@ -518,6 +519,7 @@ function refreshOversightAt(state: GameState, locationId: LocationId, amount: nu
       [locationId]: state.minute,
     },
   };
+  return alterWardAcuity(next, locationId, wasStale ? -6 : -3, wasStale ? -4 : -2);
 }
 
 function staleLocations(state: GameState): LocationId[] {
@@ -527,7 +529,8 @@ function staleLocations(state: GameState): LocationId[] {
 function applyOversightPressure(state: GameState, elapsedMinutes: number): GameState {
   const stale = staleLocations(state);
   const currentAreaFocusPenalty = elapsedMinutes >= 8 ? 1 : 0;
-  const oversightLoss = Math.ceil(elapsedMinutes / 10) + Math.floor(stale.length / 3) + currentAreaFocusPenalty;
+  const rawLoss = Math.ceil(elapsedMinutes / 10) + Math.floor(stale.length / 3) + currentAreaFocusPenalty;
+  const oversightLoss = state.shiftPhase === "pre_handover" ? Math.floor(rawLoss / 2) : rawLoss;
   let next = {
     ...state,
     oversight: clamp(state.oversight - oversightLoss),
@@ -552,7 +555,7 @@ function candidateTemplates(state: GameState): TaskTemplate[] {
       const momentum = state.wardMomentum[template.locationId];
       const momentumBonus = Math.floor(momentum.pressure / 8) + (momentum.tags.includes("systemBlocked") && template.source === "system" ? 6 : 0) + (momentum.tags.includes("quietlyUnsafe") && (template.vague || template.category === "ambiguous") ? 6 : 0) + (momentum.tags.includes("fragile") && ["critical", "high"].includes(template.trueUrgency) ? 6 : 0);
       const pressureBonus = state.hospitalPressure > 65 && ["critical", "high"].includes(template.trueUrgency) ? 4 : 0;
-      const regSenseBonus = template.regSense && state.regSense > 35 ? 5 : 0;
+      const regSenseBonus = template.regSense && state.regSense > 35 ? (state.shiftPhase === "deep" ? 2 : 3) : 0;
       return { ...template, weight: template.weight + localBonus + acuityBonus + momentumBonus + pressureBonus + regSenseBonus };
     });
 }
@@ -584,7 +587,7 @@ export function spawnTask(state: GameState): GameState {
 
 function deteriorateTask(state: GameState, task: ActiveTask): GameState {
   if (task.penaltyApplied) return state;
-  const severityMultiplier = Math.max(1, Math.ceil(state.wardAcuity[task.locationId].level / 45));
+  const severityMultiplier = Math.min(1.5, Math.max(1, state.wardAcuity[task.locationId].level / 45));
   const momentum = state.wardMomentum[task.locationId];
   const momentumMultiplier = momentum.tags.includes("fragile") || momentum.tags.includes("quietlyUnsafe") ? 1.25 : 1;
   const amplified = {
@@ -790,13 +793,13 @@ export function markTaskForHandover(state: GameState, taskId: string): GameState
 
 function escalationTimingForTask(state: GameState, task: ActiveTask): "early" | "late" | "premature" {
   const remaining = task.dueAt - state.minute;
-  if (["low", "nonsense"].includes(task.trueUrgency) && task.intelLevel < 1) return "premature";
   if (task.status === "deteriorated" || remaining <= 8) return "late";
+  if (task.intelLevel < 1) return "premature";
   return "early";
 }
 
 function escalationConsequence(target: EscalationTarget, timing: "early" | "late" | "premature"): Consequence {
-  if (timing === "premature") return { time: 3, focus: -4, reputation: -2, score: -5 };
+  if (timing === "premature") return { time: 3, focus: -4, reputation: -4, score: -5 };
   if (timing === "late") return { time: 5, patientSafety: 3, reputation: -1, clinicalConfidence: 3, handoverQuality: 3, consultantEscalations: 1, score: 20 };
   return { time: target === "ICU" ? 5 : 4, patientSafety: 5, reputation: 2, clinicalConfidence: 4, handoverQuality: 4, consultantEscalations: target === "consultant" || target === "ICU" ? 1 : 0, score: 35 };
 }
@@ -911,7 +914,7 @@ export function delegatePager(state: GameState, taskId: string, memberId: TeamMe
     team: next.team.map((item) => item.id === memberId ? {
       ...item,
       busyUntil: next.minute + duration,
-      trust: clamp(item.trust + (appropriate ? 4 : -8)),
+      trust: clamp(item.trust + (appropriate ? (item.id === "fy1" ? 6 : 4) : -8)),
       fatigue: clamp(item.fatigue + Math.ceil(duration / 6) + (appropriate ? 0 : 6)),
       recentDelegations: item.recentDelegations + 1,
     } : item),
@@ -1012,13 +1015,20 @@ export function orderedEncounterChoices(state: GameState, encounter: Encounter):
   const baseChoices = step?.choices ?? encounter.choices;
   const choices = encounter.id === "consultant_grilling" ? baseChoices.map((choice) => {
     const memoryScore = handoverMemoryScore(state);
+    let modified = choice;
     if (choice.id === "best" && memoryScore >= 65) {
-      return { ...choice, label: "Give a structured risk handover backed by the things you flagged overnight", consequence: { ...choice.consequence, handoverQuality: (choice.consequence.handoverQuality ?? 0) + 6, reputation: (choice.consequence.reputation ?? 0) + 3, score: (choice.consequence.score ?? 0) + 80 } };
+      modified = { ...modified, label: "Give a structured risk handover backed by the things you flagged overnight", consequence: { ...modified.consequence, handoverQuality: (modified.consequence.handoverQuality ?? 0) + 6, reputation: (modified.consequence.reputation ?? 0) + 3, score: (modified.consequence.score ?? 0) + 80 } };
     }
     if (choice.id === "unsafe" && memoryScore < 45) {
-      return { ...choice, label: "Try to imply the night was quieter than the memory trail suggests", consequence: { ...choice.consequence, handoverQuality: (choice.consequence.handoverQuality ?? 0) - 6, reputation: (choice.consequence.reputation ?? 0) - 3, score: (choice.consequence.score ?? 0) - 80 } };
+      modified = { ...modified, label: "Try to imply the night was quieter than the memory trail suggests", consequence: { ...modified.consequence, handoverQuality: (modified.consequence.handoverQuality ?? 0) - 6, reputation: (modified.consequence.reputation ?? 0) - 3, score: (modified.consequence.score ?? 0) - 80 } };
     }
-    return choice;
+    if (state.birdStatus === "contained" && choice.id === "best") {
+      modified = { ...modified, consequence: { ...modified.consequence, score: (modified.consequence.score ?? 0) + 30 } };
+    }
+    if (state.birdStatus === "loose" && choice.id === "unsafe") {
+      modified = { ...modified, consequence: { ...modified.consequence, reputation: (modified.consequence.reputation ?? 0) - 3, score: (modified.consequence.score ?? 0) - 20 } };
+    }
+    return modified;
   }) : baseChoices;
   return shuffleChoices(choices, state.rngSeed ^ hashText(`${encounter.id}:${step?.id ?? "base"}`));
 }
@@ -1065,7 +1075,7 @@ export function takeBreak(state: GameState): GameState {
   if (state.locationId !== "mess" || state.ended) return state;
   const caffeineHit = state.items.includes("Coffee") ? 12 : 0;
   let next = applyConsequence(state, { time: 9, stamina: 16, focus: 10, caffeine: caffeineHit, breaksTaken: 1, score: state.activeTasks.length ? -10 : 20 });
-  next = { ...next, oversight: clamp(next.oversight - (state.activeTasks.length ? 8 : 4)), hospitalPressure: clamp(next.hospitalPressure - (state.activeTasks.length ? 0 : 4)) };
+  next = { ...next, oversight: clamp(next.oversight - (state.activeTasks.length ? 8 : 4)), hospitalPressure: clamp(next.hospitalPressure - (state.activeTasks.length ? 0 : 8)) };
   next = runShiftDirector(next, 9 + Math.min(8, state.activeTasks.length * 2 + state.breaksTaken));
   const warning = state.activeTasks.length ? "Hospital pressure rises while you rest; the bleep finds you anyway." : "You take nine protected-ish minutes in the mess.";
   return addLog(next, warning, state.activeTasks.length ? "bad" : "good");
