@@ -255,7 +255,6 @@ export function initialGameState(seed = 92821): GameState {
     handoverMemory: initialHandoverMemory(),
     escalations: [],
     team: initialTeam(),
-    allies: ["Experienced night nurse"],
     items: ["Guideline app", "Coffee", "ABG kit"],
     resources: initialResources(),
     log: [{ minute: 0, text: "21:00 handover complete. You are the medical registrar. The bleep has opinions.", tone: "neutral" }],
@@ -734,7 +733,7 @@ export function moveTo(state: GameState, locationId: LocationId): GameState {
   const current = locations.find((location) => location.id === state.locationId)!;
   const destination = locations.find((location) => location.id === locationId)!;
   if (!current.links.includes(locationId) || state.ended || state.activeEncounterId) return state;
-  const friction = destination.id === "lifts" && !state.allies.includes("Porter who knows shortcuts") ? 4 : 0;
+  const friction = 0;
   let next = advanceTime(state, destination.timeCost + friction);
   next = { ...next, locationId };
   next = refreshOversightAt(next, locationId, locationId === "corridor" ? 4 : 8);
@@ -1041,7 +1040,6 @@ export function chooseEncounterOption(state: GameState, choiceId: string): GameS
   let next = applyConsequence(state, choice.consequence);
   const elapsed = choice.consequence.time ?? 0;
   if (elapsed > 0) next = runShiftDirector(next, elapsed);
-  if (choice.unlockAlly && !next.allies.includes(choice.unlockAlly)) next = { ...next, allies: [...next.allies, choice.unlockAlly] };
   if (choice.unlockItem && !next.items.includes(choice.unlockItem)) next = { ...next, items: [...next.items, choice.unlockItem] };
   if (choice.nextStepId) {
     next = refreshOversightAt(next, encounter.locationId, choice.unsafe ? 1 : 4);

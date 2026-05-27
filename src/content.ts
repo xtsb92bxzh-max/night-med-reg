@@ -246,7 +246,6 @@ export const encounters: Encounter[] = [
         detail: "You ask for ICU review for vasopressors/HDU-level monitoring while clarifying escalation with family/consultant.",
         feedback: "The ICU registrar accepts the referral and gives useful advice rather than a sigh.",
         resolves: true,
-        unlockAlly: "ICU registrar",
         consequence: { time: 10, stamina: -4, focus: -4, reputation: 5, patientSafety: 5, score: 95, handoverQuality: 4, clinicalConfidence: 4 },
       },
       {
@@ -284,7 +283,6 @@ export const encounters: Encounter[] = [
         detail: "You make the clinical question impossible to miss.",
         feedback: "The scan is accepted. Radiology rewards a request that contains medicine.",
         resolves: true,
-        unlockAlly: "Radiographer who trusts good referrals",
         consequence: { time: 8, focus: -3, reputation: 4, patientSafety: 3, score: 70, handoverQuality: 2 },
       },
       {
@@ -322,7 +320,6 @@ export const encounters: Encounter[] = [
         detail: "You make it easy for pharmacy to solve the right problem.",
         feedback: "The pharmacist appears by phone like a benevolent protocol.",
         resolves: true,
-        unlockAlly: "Pharmacist on call",
         consequence: { time: 9, focus: -3, reputation: 4, patientSafety: 3, score: 65, chaosSurvived: 1 },
       },
       {
@@ -397,7 +394,6 @@ export const encounters: Encounter[] = [
         detail: "You do not personally chase the bird, but you stop the hospital flow from clotting.",
         feedback: "The corridor becomes passable. The bird is contained without needing a medical clerking.",
         resolves: true,
-        unlockAlly: "Porter who knows shortcuts",
         consequence: { time: 8, stamina: -3, reputation: 4, score: 60, chaosSurvived: 3 },
       },
       {
@@ -435,7 +431,6 @@ export const encounters: Encounter[] = [
         detail: "You solve route and communication together.",
         feedback: "You arrive faster and the ward stops re-bleeping every two minutes.",
         resolves: true,
-        unlockAlly: "Porter who knows shortcuts",
         consequence: { time: 5, stamina: -4, reputation: 3, score: 45, chaosSurvived: 1 },
       },
       {
@@ -867,5 +862,4 @@ export const taskTemplates: TaskTemplate[] = [
   ...bleepPackTasks,
 ];
 
-export const allyNames = ["Experienced night nurse", "Helpful SHO", "ICU registrar", "Radiographer who trusts good referrals", "Bed manager", "Pharmacist on call", "Porter who knows shortcuts"];
 export const itemNames = ["Coffee", "Snack", "Guideline app", "ABG kit", "Cannula kit", "Consultant advice token", "Radiology persuasion token", "Handover notes"];
