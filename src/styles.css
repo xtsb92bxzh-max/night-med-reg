@@ -1611,9 +1611,45 @@ h3 {
     gap: 0.65rem;
   }
 
+  .mobile-help-content {
+    display: grid;
+    gap: 0.65rem;
+    padding-bottom: 1rem;
+  }
+
+  .help-section-title {
+    font-size: 0.8rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #005eb8;
+    margin: 0.9rem 0 0.25rem;
+    border-bottom: 1px solid #d0dde5;
+    padding-bottom: 0.2rem;
+  }
+
+  .help-body {
+    font-size: 0.82rem;
+    color: #2a3a43;
+    margin: 0 0 0.25rem;
+    line-height: 1.45;
+  }
+
+  .help-list {
+    margin: 0 0 0.25rem 0;
+    padding-left: 1.1rem;
+    font-size: 0.82rem;
+    color: #2a3a43;
+    line-height: 1.5;
+  }
+
+  .help-list li {
+    margin-bottom: 0.2rem;
+  }
+
   .mobile-tab-bar {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     background: #f8faf9;
     border-top: 1px solid #aebac0;
     box-shadow: 0 -4px 12px rgba(20, 35, 45, 0.1);
