@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { encounters, locations, taskTemplates, SHIFT_LENGTH } from "./content";
-import { activeEncounterView, brewCoffee, chooseEncounterOption, clarifyTask, deferPager, delegationDuration, delegatePager, endingRank, escalateEncounter, escalateTask, findSnack, formatClock, handoverDebrief, handoverMemoryScore, ignorePager, initialGameState, isDelegationAppropriate, isTeamMemberAvailable, liveTasks, markEncounterForHandover, markTaskForHandover, moveTo, orderedEncounterChoices, randomRunSeed, respondToPager, takeBreak, useResource } from "./game";
+import { acceptTreat, activeEncounterView, brewCoffee, chooseEncounterOption, clarifyTask, deferPager, delegationDuration, delegatePager, dismissTreat, endingRank, escalateEncounter, escalateTask, findSnack, formatClock, handoverDebrief, handoverMemoryScore, ignorePager, initialGameState, isDelegationAppropriate, isTeamMemberAvailable, liveTasks, markEncounterForHandover, markTaskForHandover, moveTo, orderedEncounterChoices, randomRunSeed, respondToPager, takeBreak, useResource } from "./game";
 import type { ActiveTask, Consequence, GameState, Location, LocationId, ResourceItemId, TeamMemberId } from "./types";
 
 const statRows: [string, keyof GameState][] = [
@@ -217,6 +217,20 @@ function MapPanel({ state, setState }: { state: GameState; setState: (state: Gam
         <h3>{here.name}</h3>
         <p>{here.flavour}</p>
       </div>
+      {(() => {
+        const treat = state.activeTasks.find((t) => t.source === "treat" && t.locationId === state.locationId);
+        return treat ? (
+          <div className="treat-offer">
+            <strong>{treat.message}</strong>
+            <p>{treat.sender}</p>
+            <DeltaList consequence={treat.handledWell} />
+            <div className="treat-offer-actions">
+              <button className="primary" onClick={() => setState(acceptTreat(state, treat.id))}>Accept</button>
+              <button className="ghost" onClick={() => setState(dismissTreat(state, treat.id))}>Decline</button>
+            </div>
+          </div>
+        ) : null;
+      })()}
       {staleCount > 0 && <p className="oversight-warning">Oversight fading: {staleCount} area{staleCount === 1 ? "" : "s"} not recently reviewed.</p>}
       {lockedByEncounter && <p className="map-lock">Resolve the active challenge before moving on.</p>}
       {state.locationId === "mess" && state.activeTasks.length > 0 && <p className="map-lock">Hospital pressure will rise if you rest with unresolved live tasks.</p>}
@@ -238,7 +252,14 @@ function MapPanel({ state, setState }: { state: GameState; setState: (state: Gam
 }
 
 function taskClass(task: ActiveTask): string {
-  return `pager ${task.trueUrgency} ${task.regSense ? "reg-sense-task" : ""} ${task.status === "deteriorated" ? "deteriorated" : ""} ${task.markedForHandover ? "handover-marked" : ""}`;
+  return [
+    "pager",
+    task.trueUrgency,
+    task.source === "treat" ? "treat" : "",
+    task.regSense ? "reg-sense-task" : "",
+    task.status === "deteriorated" ? "deteriorated" : "",
+    task.markedForHandover ? "handover-marked" : "",
+  ].filter(Boolean).join(" ");
 }
 
 const delegateOrder: TeamMemberId[] = ["fy1", "trusted_fy2", "locum_no_login", "bed_manager"];
@@ -293,30 +314,44 @@ function TaskPanel({ state, setState, limit, compact = false }: { state: GameSta
       <div className="pager-list">
         {tasks.length === 0 && <p className="muted">A rare silence. Deeply suspicious.</p>}
         {visibleTasks.map((task) => (
-          <article className={compact ? `${taskClass(task)} compact` : taskClass(task)} key={task.id}>
-            <div>
-              <strong>{task.message}</strong>
-              {!compact && <p>{task.sender} · {task.source.replace("_", " ")} · claimed {task.claimedUrgency} · true risk {task.trueUrgency}</p>}
-              <small>
-                {task.status === "deteriorated" ? "overdue / Datix risk logged" : task.status} · intel {task.intelLevel}/2{task.markedForHandover ? " · handover" : ""} · received {state.minute - task.createdAt}m ago · {locations.find((location) => location.id === task.locationId)?.name} · {Math.max(0, task.dueAt - state.minute)}m to deterioration
-              </small>
-            </div>
-            <div className="pager-actions">
-              <button onClick={() => setState(respondToPager(state, task.id))}>Attend</button>
-              <button onClick={() => setState(clarifyTask(state, task.id))} disabled={task.intelLevel >= 2}>Clarify</button>
-              <button onClick={() => setState(escalateTask(state, task.id))}>Escalate</button>
-              <button onClick={() => setState(markTaskForHandover(state, task.id))} disabled={task.markedForHandover} title="Flag this as something the day team should explicitly know about at 09:00">Handover</button>
-              <button onClick={() => setState(deferPager(state, task.id))}>Defer</button>
-              <button className="danger" onClick={() => setState(ignorePager(state, task.id))}>Ignore</button>
-              <DelegationControls
-                state={state}
-                task={task}
-                setState={setState}
-                expanded={expandedDelegateTaskId === task.id}
-                onToggle={() => setExpandedDelegateTaskId(expandedDelegateTaskId === task.id ? undefined : task.id)}
-              />
-            </div>
-          </article>
+          task.source === "treat" ? (
+            <article className={compact ? `${taskClass(task)} compact` : taskClass(task)} key={task.id}>
+              <div>
+                <strong>{task.message}</strong>
+                {!compact && <p className="muted">{task.sender}</p>}
+                <DeltaList consequence={task.handledWell} />
+              </div>
+              <div className="pager-actions">
+                <button className="primary" onClick={() => setState(acceptTreat(state, task.id))}>Accept</button>
+                <button className="ghost" onClick={() => setState(dismissTreat(state, task.id))}>Decline</button>
+              </div>
+            </article>
+          ) : (
+            <article className={compact ? `${taskClass(task)} compact` : taskClass(task)} key={task.id}>
+              <div>
+                <strong>{task.message}</strong>
+                {!compact && <p>{task.sender} · {task.source.replace("_", " ")} · claimed {task.claimedUrgency} · true risk {task.trueUrgency}</p>}
+                <small>
+                  {task.status === "deteriorated" ? "overdue / Datix risk logged" : task.status} · intel {task.intelLevel}/2{task.markedForHandover ? " · handover" : ""} · received {state.minute - task.createdAt}m ago · {locations.find((location) => location.id === task.locationId)?.name} · {Math.max(0, task.dueAt - state.minute)}m to deterioration
+                </small>
+              </div>
+              <div className="pager-actions">
+                <button onClick={() => setState(respondToPager(state, task.id))}>Attend</button>
+                <button onClick={() => setState(clarifyTask(state, task.id))} disabled={task.intelLevel >= 2}>Clarify</button>
+                <button onClick={() => setState(escalateTask(state, task.id))}>Escalate</button>
+                <button onClick={() => setState(markTaskForHandover(state, task.id))} disabled={task.markedForHandover} title="Flag this as something the day team should explicitly know about at 09:00">Handover</button>
+                <button onClick={() => setState(deferPager(state, task.id))}>Defer</button>
+                <button className="danger" onClick={() => setState(ignorePager(state, task.id))}>Ignore</button>
+                <DelegationControls
+                  state={state}
+                  task={task}
+                  setState={setState}
+                  expanded={expandedDelegateTaskId === task.id}
+                  onToggle={() => setExpandedDelegateTaskId(expandedDelegateTaskId === task.id ? undefined : task.id)}
+                />
+              </div>
+            </article>
+          )
         ))}
       </div>
     </section>
@@ -504,7 +539,7 @@ function EndScreen({ state, onRestart }: { state: GameState; onRestart: () => vo
           <span>Oversight <strong>{state.oversight}</strong></span>
           <span>Reg Sense <strong>{state.regSense}</strong></span>
           <span>Patient safety <strong>{state.patientSafety}</strong></span>
-          <span>Open tasks <strong>{state.activeTasks.length}</strong></span>
+          <span>Open tasks <strong>{state.activeTasks.filter((t) => t.source !== "treat").length}</strong></span>
         </div>
         <button className="primary wide" onClick={onRestart}>Start another night</button>
       </div>
@@ -590,7 +625,7 @@ function MobileInfoTab({ state, setState, onRestart }: { state: GameState; setSt
 }
 
 function MobileTabBar({ active, onChange, state }: { active: MobileTab; onChange: (tab: MobileTab) => void; state: GameState }) {
-  const taskCount = liveTasks(state).length;
+  const taskCount = liveTasks(state).filter((t) => t.source !== "treat").length;
   const hasEncounter = Boolean(state.activeEncounterId);
   return (
     <nav className="mobile-tab-bar" aria-label="Game panels">

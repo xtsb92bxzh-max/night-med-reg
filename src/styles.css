@@ -512,6 +512,45 @@ h3 {
   border-left-color: #1d9a8a;
 }
 
+.pager.treat {
+  background: #fffbf0;
+  border-left-color: #c28b00;
+  border-color: #e0cc80;
+}
+
+.pager.treat strong {
+  color: #3d2e00;
+}
+
+.treat-offer {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  padding: 0.8rem;
+  background: #fffbf0;
+  border: 1px solid #e0cc80;
+  border-left: 5px solid #c28b00;
+  border-radius: 6px;
+}
+
+.treat-offer strong {
+  font-size: 0.95rem;
+  color: #3d2e00;
+}
+
+.treat-offer p {
+  margin: 0;
+  color: #58676f;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.treat-offer-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+
 .pager.deteriorated {
   background: #fff8f6;
   border-color: #b3261e;
