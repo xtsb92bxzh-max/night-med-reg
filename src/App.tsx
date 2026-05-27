@@ -567,7 +567,7 @@ function EndScreen({ state, onRestart }: { state: GameState; onRestart: () => vo
   );
 }
 
-type MobileTab = "map" | "encounter" | "tasks" | "info";
+type MobileTab = "map" | "encounter" | "tasks" | "info" | "help";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 900);
@@ -644,6 +644,83 @@ function MobileInfoTab({ state, setState, onRestart }: { state: GameState; setSt
   );
 }
 
+function MobileHelpTab() {
+  return (
+    <div className="mobile-help-content">
+      <section className="panel">
+        <div className="panel-heading"><h2>Quick Reference</h2></div>
+
+        <h3 className="help-section-title">The Goal</h3>
+        <p className="help-body">Survive the night shift (21:00–09:00) as the on-call medical registrar. Respond to bleeps, make clinical decisions, and hand over safely at dawn.</p>
+
+        <h3 className="help-section-title">Your Stats</h3>
+        <ul className="help-list">
+          <li><strong>Stamina</strong> — physical energy; hits zero and you can't continue</li>
+          <li><strong>Focus</strong> — mental sharpness; low focus means worse decisions</li>
+          <li><strong>Reputation</strong> — how the team sees you; affects delegation success</li>
+          <li><strong>Safety</strong> — patient safety score; never let this bottom out</li>
+          <li><strong>Confidence</strong> — clinical confidence built by good decisions</li>
+          <li><strong>Caffeine</strong> — temporary boost from coffee and snacks</li>
+        </ul>
+
+        <h3 className="help-section-title">The Map</h3>
+        <p className="help-body">Click a connected location to move there. Each move costs time (minutes). Travel through the <em>Main Corridor</em> to reach most areas quickly.</p>
+
+        <h3 className="help-section-title">Bleeps (Tasks)</h3>
+        <ul className="help-list">
+          <li>New bleeps appear throughout the shift — check the Bleeps tab</li>
+          <li>Tap a task to see details, clarify, defer, delegate, or escalate</li>
+          <li>Ignoring <strong>critical</strong> tasks causes patient deterioration</li>
+          <li>Use <em>Clarify</em> to reveal the true urgency of vague bleeps</li>
+          <li><em>Defer</em> low-priority bleeps to focus on emergencies</li>
+          <li>Mark important tasks <em>For Handover</em> before the shift ends</li>
+        </ul>
+
+        <h3 className="help-section-title">Encounters</h3>
+        <p className="help-body">At certain locations you will face a clinical scenario. Read the vignette, observations, examination, and investigations — then pick the best action. Good decisions reward Safety and Score; unsafe choices trigger Datix.</p>
+
+        <h3 className="help-section-title">Your Team</h3>
+        <ul className="help-list">
+          <li><strong>FY1</strong> — handles simple jobs; check their trust level</li>
+          <li><strong>Trusted FY2</strong> — competent, reliable for most tasks</li>
+          <li><strong>Locum (no login)</strong> — risky delegation; use sparingly</li>
+          <li><strong>Bed Manager</strong> — logistics only</li>
+        </ul>
+
+        <h3 className="help-section-title">Resources</h3>
+        <ul className="help-list">
+          <li><strong>Coffee</strong> — restores Stamina &amp; Caffeine</li>
+          <li><strong>Snack</strong> — small Stamina boost</li>
+          <li><strong>Guideline App</strong> — improves encounter choices</li>
+          <li><strong>ABG Kit</strong> — unlocks blood gas data</li>
+          <li><strong>Cannula Kit</strong> — enables IV access tasks</li>
+          <li><strong>Consultant Advice</strong> — escalation support</li>
+          <li><strong>Radiology Persuasion</strong> — helps get scans approved</li>
+        </ul>
+
+        <h3 className="help-section-title">Key Locations</h3>
+        <ul className="help-list">
+          <li><strong>ED Resus</strong> — emergencies; volatile, time-critical</li>
+          <li><strong>MAU</strong> — admissions hub; high pressure</li>
+          <li><strong>ICU</strong> — reward good referrals; penalises vague ones</li>
+          <li><strong>Doctors' Mess</strong> — rest here to restore Stamina</li>
+          <li><strong>Main Corridor</strong> — central hub linking all areas</li>
+          <li><strong>Pharmacy Hatch</strong> — closed at night; use on-call line</li>
+        </ul>
+
+        <h3 className="help-section-title">Tips</h3>
+        <ul className="help-list">
+          <li>Prioritise <strong>emergencies</strong> — delay costs Safety points</li>
+          <li>Take a break in the Mess before Stamina bottoms out</li>
+          <li>Clarify vague bleeps before travelling far to answer them</li>
+          <li>Escalate to the consultant early on complex or deteriorating patients</li>
+          <li>Mark unresolved tasks for handover so the day team knows</li>
+        </ul>
+      </section>
+    </div>
+  );
+}
+
 function MobileTabBar({ active, onChange, state }: { active: MobileTab; onChange: (tab: MobileTab) => void; state: GameState }) {
   const taskCount = liveTasks(state).filter((t) => t.source !== "treat").length;
   const hasEncounter = Boolean(state.activeEncounterId);
@@ -657,6 +734,7 @@ function MobileTabBar({ active, onChange, state }: { active: MobileTab; onChange
         {taskCount > 0 ? `Bleeps ${taskCount}` : "Bleeps"}
       </button>
       <button className={active === "info" ? "mob-tab active" : "mob-tab"} onClick={() => onChange("info")}>Info</button>
+      <button className={active === "help" ? "mob-tab active" : "mob-tab"} onClick={() => onChange("help")}>Help</button>
     </nav>
   );
 }
@@ -681,6 +759,7 @@ export default function App() {
           {mobileTab === "encounter" && <EncounterPanel state={state} setState={setState} />}
           {mobileTab === "tasks" && <TaskPanel state={state} setState={setState} />}
           {mobileTab === "info" && <MobileInfoTab state={state} setState={setState} onRestart={() => setState(newRun())} />}
+          {mobileTab === "help" && <MobileHelpTab />}
         </div>
         <MobileTabBar active={mobileTab} onChange={setMobileTab} state={state} />
         {state.datixAlert && !state.ended && <DatixWarningModal onDismiss={() => setState(dismissDatixAlert(state))} />}
