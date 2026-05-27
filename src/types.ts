@@ -82,7 +82,6 @@ export interface EncounterChoice {
   detail: string;
   consequence: Consequence;
   feedback: string;
-  unlockAlly?: string;
   unlockItem?: string;
   nextStepId?: string;
   resolves?: boolean;
@@ -290,7 +289,6 @@ export interface GameState {
   handoverMemory: HandoverMemory;
   escalations: EscalationRecord[];
   team: TeamMember[];
-  allies: string[];
   items: string[];
   resources: ResourceItem[];
   log: ShiftLogEntry[];

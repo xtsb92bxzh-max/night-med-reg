@@ -423,9 +423,6 @@ function ResourcesPanel({ state, setState, mode = "all" }: { state: GameState; s
               </div>
             ))}
           </div>
-          <div className="chips">
-            {state.allies.map((ally) => <span key={ally}>{ally}</span>)}
-          </div>
         </>
       )}
       {mode !== "team" && (
