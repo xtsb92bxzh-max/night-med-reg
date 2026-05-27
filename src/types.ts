@@ -294,4 +294,5 @@ export interface GameState {
   log: ShiftLogEntry[];
   ended: boolean;
   endingReason?: string;
+  datixAlert?: boolean;
 }

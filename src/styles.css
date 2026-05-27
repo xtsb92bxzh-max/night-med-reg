@@ -802,6 +802,78 @@ h3 {
   box-shadow: 0 20px 80px rgba(0, 0, 0, 0.25);
 }
 
+.datix-warning-screen {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(60, 10, 8, 0.6);
+  z-index: 200;
+}
+
+.datix-warning-card {
+  width: min(560px, 100%);
+  background: #fff8f6;
+  border-radius: 8px;
+  border: 2px solid #b3261e;
+  padding: 1.5rem 1.4rem 1.2rem;
+  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+
+.datix-icon {
+  font-size: 2.2rem;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+  color: #b3261e;
+}
+
+.datix-warning-card h2 {
+  margin: 0 0 0.3rem;
+  color: #7d1f15;
+  font-size: 1.35rem;
+}
+
+.datix-subtitle {
+  margin: 0 0 0.9rem;
+  font-weight: 600;
+  color: #7d1f15;
+  font-size: 0.9rem;
+}
+
+.datix-body {
+  margin: 0 0 0.7rem;
+  color: #3b2320;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.datix-acknowledge {
+  margin-top: 0.8rem;
+  padding: 0.55rem 1.1rem;
+  background: #b3261e;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.datix-acknowledge:hover {
+  background: #8c1c16;
+}
+
+.datix-cost {
+  opacity: 0.8;
+  font-weight: 400;
+  font-size: 0.82rem;
+  margin-left: 0.3rem;
+}
+
 .debrief-list {
   display: grid;
   gap: 0.45rem;
