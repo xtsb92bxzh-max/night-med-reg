@@ -371,7 +371,7 @@ describe("Night Med Reg core logic", () => {
 
   it("scenario pack tasks point to real multi-step encounters", () => {
     const packTasks = taskTemplates.filter((task) => task.id.startsWith("pack_"));
-    expect(packTasks.length).toBe(12);
+    expect(packTasks.length).toBe(13);
     for (const task of packTasks) {
       const encounter = encounters.find((item) => item.id === task.encounterId);
       expect(encounter).toBeTruthy();
