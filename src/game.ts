@@ -1,4 +1,5 @@
 import { encounters, locations, pagerEvents, SHIFT_LENGTH, taskTemplates } from "./content";
+import { treatTemplates } from "./treatPack";
 import type { ActivePager, ActiveTask, Consequence, Encounter, EncounterChoice, EscalationTarget, GameState, HandoverMemory, LocationId, ResourceItem, ResourceItemId, ShiftLogEntry, ShiftPhase, TaskTemplate, TeamMember, TeamMemberId, WardAcuityState, WardMomentumState } from "./types";
 
 const clamp = (value: number, min = 0, max = 100) => Math.max(min, Math.min(max, value));
@@ -423,7 +424,7 @@ export function activePagers(state: GameState): ActivePager[] {
 }
 
 function syncLegacyPagerIds(state: GameState): GameState {
-  return { ...state, activePagerIds: state.activeTasks.map((task) => task.id), pagerBacklog: state.activeTasks.length };
+  return { ...state, activePagerIds: state.activeTasks.map((task) => task.id), pagerBacklog: state.activeTasks.filter((task) => task.source !== "treat").length };
 }
 
 function updateTeamAvailability(state: GameState): GameState {
@@ -669,6 +670,64 @@ export function advanceTime(state: GameState, minutes: number): GameState {
   return checkEnding(next);
 }
 
+const treatSpawnLocations: LocationId[] = ["ed_resus", "mau", "respiratory", "cardiology", "elderly", "surgical", "icu", "radiology", "pharmacy", "estates"];
+
+function maybeTreatOnArrival(state: GameState): GameState {
+  if (!treatSpawnLocations.includes(state.locationId)) return state;
+  if (state.activeTasks.some((t) => t.source === "treat")) return state;
+  const [roll, rngSeed] = nextRandom(state.rngSeed);
+  const chance = 0.18 + (state.stamina < 40 ? 0.08 : 0);
+  if (roll > chance) return { ...state, rngSeed };
+  const candidates = treatTemplates.filter((t) => t.locationIds.length === 0 || t.locationIds.includes(state.locationId));
+  if (!candidates.length) return { ...state, rngSeed };
+  const [treatRoll, nextSeed] = nextRandom(rngSeed);
+  const template = candidates[Math.floor(treatRoll * candidates.length)];
+  const treat: ActiveTask = {
+    id: `treat-${template.id}-${state.minute}`,
+    templateId: template.id,
+    locationId: state.locationId,
+    message: template.message,
+    sender: template.flavour,
+    source: "treat",
+    claimedUrgency: "offered",
+    trueUrgency: "low",
+    category: "routine",
+    createdAt: state.minute,
+    seenAt: state.minute,
+    lastUpdatedAt: state.minute,
+    dueAt: state.minute + 999,
+    status: "new",
+    intelLevel: 2,
+    vague: false,
+    regSense: false,
+    deferred: false,
+    markedForHandover: false,
+    ignored: {},
+    handledWell: template.consequence,
+    delegableTo: [],
+    riskyDelegateTo: [],
+    delegationDuration: {},
+  };
+  return addLog(
+    syncLegacyPagerIds({ ...state, rngSeed: nextSeed, activeTasks: [...state.activeTasks, treat] }),
+    `Treat: ${treat.message}`,
+    "good",
+  );
+}
+
+export function acceptTreat(state: GameState, taskId: string): GameState {
+  const task = findTask(state, taskId);
+  if (!task || task.source !== "treat" || state.ended) return state;
+  const next = applyConsequence(removeTask(state, task), task.handledWell);
+  return addLog(syncLegacyPagerIds(next), `Accepted: ${task.message}`, "good");
+}
+
+export function dismissTreat(state: GameState, taskId: string): GameState {
+  const task = findTask(state, taskId);
+  if (!task || task.source !== "treat" || state.ended) return state;
+  return addLog(removeTask(state, task), `Declined: ${task.message}`, "neutral");
+}
+
 export function moveTo(state: GameState, locationId: LocationId): GameState {
   const current = locations.find((location) => location.id === state.locationId)!;
   const destination = locations.find((location) => location.id === locationId)!;
@@ -679,6 +738,7 @@ export function moveTo(state: GameState, locationId: LocationId): GameState {
   next = refreshOversightAt(next, locationId, locationId === "corridor" ? 4 : 8);
   next = alterWardMomentum(next, locationId, -4, [], ["quietlyUnsafe"]);
   next = addLog(next, `Moved to ${destination.name}. ${destination.quirk}`, friction ? "bad" : "neutral");
+  next = maybeTreatOnArrival(next);
   return triggerLocationEncounter(next);
 }
 
