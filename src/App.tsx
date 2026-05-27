@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { encounters, locations, taskTemplates, SHIFT_LENGTH } from "./content";
-import { acceptTreat, activeEncounterView, brewCoffee, chooseEncounterOption, clarifyTask, deferPager, delegationDuration, delegatePager, dismissTreat, endingRank, escalateEncounter, escalateTask, findSnack, formatClock, handoverDebrief, handoverMemoryScore, ignorePager, initialGameState, isDelegationAppropriate, isTeamMemberAvailable, liveTasks, markEncounterForHandover, markTaskForHandover, moveTo, orderedEncounterChoices, randomRunSeed, respondToPager, takeBreak, useResource } from "./game";
+import { acceptTreat, activeEncounterView, brewCoffee, chooseEncounterOption, clarifyTask, deferPager, delegationDuration, delegatePager, dismissDatixAlert, dismissTreat, endingRank, escalateEncounter, escalateTask, findSnack, formatClock, handoverDebrief, handoverMemoryScore, ignorePager, initialGameState, isDelegationAppropriate, isTeamMemberAvailable, liveTasks, markEncounterForHandover, markTaskForHandover, moveTo, orderedEncounterChoices, randomRunSeed, respondToPager, takeBreak, useResource } from "./game";
 import type { ActiveTask, Consequence, GameState, Location, LocationId, ResourceItemId, TeamMemberId } from "./types";
 
 const statRows: [string, keyof GameState][] = [
@@ -515,6 +515,29 @@ function BottomDrawers({ state, setState }: { state: GameState; setState: (state
   );
 }
 
+function DatixWarningModal({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div className="datix-warning-screen" role="dialog" aria-modal="true" aria-labelledby="datix-title">
+      <div className="datix-warning-card">
+        <div className="datix-icon" aria-hidden="true">⚠</div>
+        <h2 id="datix-title">You've Been Datixed</h2>
+        <p className="datix-subtitle">A formal incident report has been filed with clinical governance.</p>
+        <p className="datix-body">
+          Your management decision has triggered a Datix incident report. This will be reviewed at the next governance meeting,
+          shared with your educational supervisor, and discussed at length in a departmental audit that achieves nothing but
+          takes three hours of a Tuesday afternoon.
+        </p>
+        <p className="datix-body">
+          In the meantime, please complete the incident form — in full — using the antiquated web portal that only works in Internet Explorer.
+        </p>
+        <button className="datix-acknowledge" onClick={onDismiss}>
+          Submit incident form <span className="datix-cost">(−3 mins)</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function EndScreen({ state, onRestart }: { state: GameState; onRestart: () => void }) {
   const rank = endingRank(state);
   return (
@@ -663,6 +686,7 @@ export default function App() {
           {mobileTab === "info" && <MobileInfoTab state={state} setState={setState} onRestart={() => setState(newRun())} />}
         </div>
         <MobileTabBar active={mobileTab} onChange={setMobileTab} state={state} />
+        {state.datixAlert && !state.ended && <DatixWarningModal onDismiss={() => setState(dismissDatixAlert(state))} />}
         {state.ended && <EndScreen state={state} onRestart={() => setState(newRun())} />}
       </main>
     );
@@ -685,6 +709,7 @@ export default function App() {
         </aside>
       </div>
       <BottomDrawers state={state} setState={setState} />
+      {state.datixAlert && !state.ended && <DatixWarningModal onDismiss={() => setState(dismissDatixAlert(state))} />}
       {state.ended && <EndScreen state={state} onRestart={() => setState(newRun())} />}
     </main>
   );

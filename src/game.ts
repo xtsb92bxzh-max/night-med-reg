@@ -266,6 +266,7 @@ export function initialGameState(seed = 92821): GameState {
 }
 
 export function applyConsequence(state: GameState, consequence: Consequence): GameState {
+  const datixFired = (consequence.datix ?? 0) > 0;
   return checkEnding({
     ...state,
     minute: Math.max(0, state.minute + (consequence.time ?? 0)),
@@ -286,7 +287,13 @@ export function applyConsequence(state: GameState, consequence: Consequence): Ga
     datix: state.datix + (consequence.datix ?? 0),
     consultantEscalations: state.consultantEscalations + (consequence.consultantEscalations ?? 0),
     chaosSurvived: state.chaosSurvived + (consequence.chaosSurvived ?? 0),
+    datixAlert: datixFired ? true : state.datixAlert,
   });
+}
+
+export function dismissDatixAlert(state: GameState): GameState {
+  const next = addLog({ ...state, datixAlert: undefined, minute: state.minute + 3 }, "Datix form submitted. That's 3 minutes you'll never get back.", "bad");
+  return runShiftDirector(next, 3);
 }
 
 export function addLog(state: GameState, text: string, tone: ShiftLogEntry["tone"] = "neutral"): GameState {
