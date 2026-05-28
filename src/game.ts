@@ -464,7 +464,7 @@ function adjustedDelegationDuration(state: GameState, task: ActiveTask, memberId
   if (!member) return base;
   const trustAdjustment = member.trust >= 70 ? -3 : member.trust < 40 ? 4 : 0;
   const fatigueAdjustment = member.fatigue >= 65 ? 5 : member.fatigue >= 45 ? 2 : 0;
-  const intelAdjustment = task.intelLevel >= 1 ? -2 : 2;
+  const intelAdjustment = task.intelLevel >= 2 ? -4 : task.intelLevel >= 1 ? -2 : 2;
   return Math.max(20, Math.min(40, base + trustAdjustment + fatigueAdjustment + intelAdjustment));
 }
 
@@ -775,7 +775,7 @@ export function clarifyTask(state: GameState, taskId: string): GameState {
     intelLevel: nextIntel,
     clarifiedAt: state.minute + cost,
     lastUpdatedAt: state.minute + cost,
-    dueAt: item.trueUrgency === "critical" ? Math.max(item.dueAt, state.minute + 8) : item.dueAt + 4,
+    dueAt: item.trueUrgency === "critical" ? Math.max(item.dueAt, state.minute + 8) : item.dueAt + (task.intelLevel === 0 ? 8 : 4),
   } : item);
   let next = advanceTime({
     ...state,
@@ -785,7 +785,10 @@ export function clarifyTask(state: GameState, taskId: string): GameState {
   }, cost);
   next = remember(next, { clarifiedRisks: [taskRiskLabel(task)], unresolvedRisks: ["critical", "high", "medium"].includes(task.trueUrgency) ? [task.message] : [] });
   next = alterWardMomentum(next, task.locationId, -2, task.regSense || task.vague ? ["quietlyUnsafe"] : []);
-  return addLog(syncLegacyPagerIds(next), `Clarified: ${task.message}. The shape of the problem is less slippery.`, "good");
+  const intelNote = nextIntel === 1
+    ? "Safe to escalate now. Delegation will run faster."
+    : "Full picture. Escalation will score higher; delegation runs at its fastest.";
+  return addLog(syncLegacyPagerIds(next), `Clarified: ${task.message}. ${intelNote}`, "good");
 }
 
 export function markTaskForHandover(state: GameState, taskId: string): GameState {
@@ -803,10 +806,11 @@ function escalationTimingForTask(state: GameState, task: ActiveTask): "early" | 
   return "early";
 }
 
-function escalationConsequence(target: EscalationTarget, timing: "early" | "late" | "premature"): Consequence {
+function escalationConsequence(target: EscalationTarget, timing: "early" | "late" | "premature", intelLevel: ActiveTask["intelLevel"] = 1): Consequence {
   if (timing === "premature") return { time: 3, focus: -4, reputation: -4, score: -5 };
   if (timing === "late") return { time: 5, patientSafety: 3, reputation: -1, clinicalConfidence: 3, handoverQuality: 3, consultantEscalations: 1, score: 20 };
-  return { time: target === "ICU" ? 5 : 4, patientSafety: 5, reputation: 2, clinicalConfidence: 4, handoverQuality: 4, consultantEscalations: target === "consultant" || target === "ICU" ? 1 : 0, score: 35 };
+  const intelBonus = intelLevel >= 2 ? 5 : 0;
+  return { time: target === "ICU" ? 5 : 4, patientSafety: 5 + intelBonus, reputation: 2, clinicalConfidence: 4, handoverQuality: 4, consultantEscalations: target === "consultant" || target === "ICU" ? 1 : 0, score: 35 + intelBonus };
 }
 
 export function escalateTask(state: GameState, taskId: string): GameState {
@@ -815,14 +819,14 @@ export function escalateTask(state: GameState, taskId: string): GameState {
   const target = task.escalationHint ?? escalationTargetFor(task);
   const timing = escalationTimingForTask(state, task);
   const record = { id: `${task.id}:${state.minute}:${target}`, minute: state.minute, target, subject: task.message, locationId: task.locationId, timing };
-  let next = applyConsequence(state, escalationConsequence(target, timing));
+  let next = applyConsequence(state, escalationConsequence(target, timing, task.intelLevel));
   next = {
     ...next,
     escalations: [...next.escalations, record],
     activeTasks: next.activeTasks.map((item) => item.id === task.id ? { ...item, intelLevel: Math.max(item.intelLevel, 1) as ActiveTask["intelLevel"], markedForHandover: true, lastUpdatedAt: next.minute, dueAt: timing === "late" ? Math.max(next.minute + 6, item.dueAt) : item.dueAt + 8 } : item),
     hospitalPressure: clamp(next.hospitalPressure + (timing === "premature" ? 2 : -4)),
   };
-  next = runShiftDirector(next, escalationConsequence(target, timing).time ?? 0);
+  next = runShiftDirector(next, escalationConsequence(target, timing, task.intelLevel).time ?? 0);
   next = remember(next, { escalations: [`${target} for ${task.message}`], markedTasks: [taskRiskLabel(task)], unresolvedRisks: [task.message] });
   next = alterWardMomentum(next, task.locationId, timing === "premature" ? 1 : -5, [], timing === "early" ? ["fragile"] : []);
   const timingText = timing === "early" ? "early enough to help" : timing === "late" ? "late, but still useful" : "a bit theatrical";
