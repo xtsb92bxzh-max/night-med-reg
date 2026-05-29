@@ -12,6 +12,7 @@ type ScenarioPackItem = Encounter & {
     claimedUrgency: string;
     trueUrgency: "critical" | "high" | "medium" | "low" | "nonsense";
     timeToDeterioration: number;
+    revealAtIntel2?: string;
   };
 };
 
@@ -60,6 +61,8 @@ const scenarios: ScenarioPackItem[] = [
     initialBleep: {
       message:
         "Please review low BP, probably dry. Nurse worried as patient looks grey.",
+      revealAtIntel2:
+        "Full picture: shock with a lactate of 4.2 on a patient with unreconciled long-term steroids. This is sepsis plus probable adrenal crisis — needs IV hydrocortisone, cultures and antibiotics now, not just fluids.",
       sender: "MAU FY1",
       claimedUrgency: "Can you review when free?",
       trueUrgency: "critical",
@@ -186,6 +189,8 @@ const scenarios: ScenarioPackItem[] = [
     initialBleep: {
       message:
         "Older patient in resus after collapse, troponin sent. ECG looks like old LBBB. ED asking med reg to accept.",
+      revealAtIntel2:
+        "Full picture: haemodynamic compromise plus Sgarbossa criteria on the ECG — this is a STEMI equivalent masked by LBBB. Activate the cath lab; don't accept for a slow medical workup.",
       sender: "ED SHO",
       claimedUrgency: "Admission decision",
       trueUrgency: "critical",
@@ -310,6 +315,8 @@ const scenarios: ScenarioPackItem[] = [
     initialBleep: {
       message:
         "COPD patient drowsy. Sats finally 99% on non-rebreathe. Can you prescribe something for agitation?",
+      revealAtIntel2:
+        "Full picture: CO2 retention from over-oxygenation — the 'agitation' is hypercapnic confusion. Turn the oxygen down to achieve the target 88-92%, repeat the gas, and consider NIV. Don't sedate.",
       sender: "Respiratory ward nurse",
       claimedUrgency: "Medication request",
       trueUrgency: "high",
@@ -427,6 +434,8 @@ const scenarios: ScenarioPackItem[] = [
     initialBleep: {
       message:
         "Patient had a short seizure, now confused. Sodium was low earlier. Ward very short staffed.",
+      revealAtIntel2:
+        "Full picture: sodium now 112 and falling — symptomatic severe hyponatraemia from IV fluids plus a thiazide still on the chart. Needs careful hypertonic correction and senior input; do not correct too fast.",
       sender: "Elderly care FY1",
       claimedUrgency: "Urgent review",
       trueUrgency: "critical",
@@ -547,6 +556,8 @@ const scenarios: ScenarioPackItem[] = [
     initialBleep: {
       message:
         "Post-op patient breathless and anxious. Surgical team in theatre. Can med reg review?",
+      revealAtIntel2:
+        "Full picture: massive PE with haemodynamic collapse in a postpartum patient — BP 86 systolic, sats 88%, right-heart strain on ECG. This is a thrombolysis decision, not a routine breathlessness review.",
       sender: "Surgical ward nurse",
       claimedUrgency: "Urgent review",
       trueUrgency: "critical",
@@ -664,6 +675,8 @@ const scenarios: ScenarioPackItem[] = [
     initialBleep: {
       message:
         "AF patient vomiting, pulse 38. Cardiology bed but no cardiology reg on site.",
+      revealAtIntel2:
+        "Full picture: digoxin toxicity with bradycardia and hyperkalaemia 6.4. Stop digoxin and any potassium-raising drugs, give digoxin-specific antibody fragments if available, and get cardiology advice urgently.",
       sender: "Cardiology ward FY1",
       claimedUrgency: "Urgent ECG review",
       trueUrgency: "high",
@@ -787,6 +800,8 @@ const scenarios: ScenarioPackItem[] = [
     initialBleep: {
       message:
         "Chemo patient generally weak, not septic as temp normal. ED wants medics to clerk.",
+      revealAtIntel2:
+        "Full picture: afebrile neutropenic sepsis — neutrophils 0.1, lactate 3.9, BP 92 systolic. The normal temperature is misleading. Antibiotics within the hour, before anything else.",
       sender: "ED coordinator",
       claimedUrgency: "Routine clerking",
       trueUrgency: "critical",
@@ -909,6 +924,8 @@ const scenarios: ScenarioPackItem[] = [
     initialBleep: {
       message:
         "Stroke thrombolysis query in CT. BP very high, radiology asking if safe to proceed.",
+      revealAtIntel2:
+        "Full picture: the chest heaviness and the 40 mmHg BP differential between arms point to aortic dissection, not stroke. Thrombolysis would be fatal — stop the process and get CT aorta now.",
       sender: "Stroke nurse",
       claimedUrgency: "Immediate decision",
       trueUrgency: "critical",
@@ -1024,6 +1041,8 @@ const scenarios: ScenarioPackItem[] = [
     initialBleep: {
       message:
         "New lymphoma patient has abnormal bloods after steroids. Pharmacy asking if allopurinol is enough.",
+      revealAtIntel2:
+        "Full picture: established tumour lysis — hyperkalaemia, hyperphosphataemia, hypocalcaemia and rising creatinine. Allopurinol is not enough; needs rasburicase, aggressive IV fluids and renal input.",
       sender: "On-call pharmacist",
       claimedUrgency: "Prescription query",
       trueUrgency: "high",
@@ -1147,6 +1166,8 @@ const scenarios: ScenarioPackItem[] = [
     initialBleep: {
       message:
         "Confused patient with headache, on apixaban. FY1 asking whether LP can wait until morning.",
+      revealAtIntel2:
+        "Full picture: bacterial meningitis is the working diagnosis — neck stiffness, photophobia, fever and a GCS of 13. Antibiotics must not wait for the LP; give them now and image first to guide LP timing.",
       sender: "MAU nurse-in-charge",
       claimedUrgency: "Procedure planning",
       trueUrgency: "critical",
@@ -1262,6 +1283,8 @@ const scenarios: ScenarioPackItem[] = [
     initialBleep: {
       message:
         "Sickle patient still in pain despite morphine. Sats a bit lower. Can you prescribe more analgesia?",
+      revealAtIntel2:
+        "Full picture: acute chest syndrome developing — new right basal opacity, sats falling, pleuritic pain and tachycardia. This is not an analgesia review; it needs oxygen, haematology, exchange transfusion planning and ICU awareness.",
       sender: "MAU nurse",
       claimedUrgency: "Analgesia review",
       trueUrgency: "high",
@@ -1382,6 +1405,8 @@ const scenarios: ScenarioPackItem[] = [
     initialBleep: {
       message:
         "AF patient rate 160, not responding to bisoprolol. Temp 38.8. Cardiology asking for medical opinion.",
+      revealAtIntel2:
+        "Full picture: thyroid storm — uncontrolled thyrotoxicosis with AF, hyperthermia and cardiovascular instability. The rate won't respond to bisoprolol alone; needs propylthiouracil, Lugol's iodine, dexamethasone and urgent endocrinology.",
       sender: "Cardiology FY1",
       claimedUrgency: "Senior opinion",
       trueUrgency: "critical",
@@ -1514,6 +1539,8 @@ const scenarios: ScenarioPackItem[] = [
     initialBleep: {
       message:
         "T2DM patient acidotic but ketones normal. ED asking if suitable for MAU.",
+      revealAtIntel2:
+        "Full picture: metformin-associated lactic acidosis with a pH of 7.03, lactate 12.8 and AKI — not DKA, and not a MAU patient. Needs ICU-level care, metformin stopped immediately, and likely renal replacement therapy.",
       sender: "ED FY2",
       claimedUrgency: "Admission destination advice",
       trueUrgency: "critical",
@@ -1663,6 +1690,7 @@ export const scenarioPackTasks: TaskTemplate[] = scenarios.map((scenario) => ({
   weight: weightFor(scenario.initialBleep.trueUrgency),
   vague: scenario.category === "ambiguous",
   regSense: false,
+  revealAtIntel2: scenario.initialBleep.revealAtIntel2,
   ignored: ignoredConsequence(scenario.initialBleep.trueUrgency),
   handledWell: {
     score: scenario.initialBleep.trueUrgency === "critical" ? 70 : 55,

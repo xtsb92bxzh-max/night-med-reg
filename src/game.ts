@@ -271,6 +271,8 @@ function makeTask(
     escalationHint: escalationTargetFor(template),
     ignored: template.ignored,
     handledWell: template.handledWell,
+    revealAtIntel1: template.revealAtIntel1,
+    revealAtIntel2: template.revealAtIntel2,
     delegableTo: template.delegableTo,
     riskyDelegateTo: template.riskyDelegateTo,
     delegationDuration: template.delegationDuration,
@@ -1411,15 +1413,16 @@ export function clarifyTask(state: GameState, taskId: string): GameState {
     -2,
     task.regSense || task.vague ? ["quietlyUnsafe"] : [],
   );
+  const revealText =
+    nextIntel === 1 ? task.revealAtIntel1 : task.revealAtIntel2;
   const intelNote =
     nextIntel === 1
-      ? "Safe to escalate now. Delegation will run faster."
-      : "Full picture. Escalation will score higher; delegation runs at its fastest.";
-  return addLog(
-    syncLegacyPagerIds(next),
-    `Clarified: ${task.message}. ${intelNote}`,
-    "good",
-  );
+      ? "Safe to escalate. Delegation will run faster."
+      : "Full picture. Escalation scores higher; delegation at its fastest.";
+  const logMessage = revealText
+    ? `${revealText} (${intelNote})`
+    : `Clarified: ${task.message}. ${intelNote}`;
+  return addLog(syncLegacyPagerIds(next), logMessage, "good");
 }
 
 export function markTaskForHandover(

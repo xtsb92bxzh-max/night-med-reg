@@ -628,7 +628,10 @@ function TaskPanel({
                 {!compact && (
                   <p>
                     {task.sender} · {task.source.replace("_", " ")} · claimed{" "}
-                    {task.claimedUrgency} · true risk {task.trueUrgency}
+                    {task.claimedUrgency} ·{" "}
+                    {task.intelLevel === 0
+                      ? "true risk: unknown — clarify to find out"
+                      : `true risk: ${task.trueUrgency}`}
                   </p>
                 )}
                 <small>

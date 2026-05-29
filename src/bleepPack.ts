@@ -25,6 +25,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "ed_hypotensive_sepsis",
     locationId: "ed_resus",
     message: "ED asking if you can review ?sepsis, BP 82 systolic after fluids",
+    revealAtIntel2:
+      "Full picture: 67F, three days of rigors and confusion. CRP 280, lactate 3.8. Likely gram-negative sepsis — needs senior review now.",
     sender: "ED SHO",
     source: "pager",
     claimedUrgency: "urgent review when free",
@@ -63,6 +65,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "resp_acute_hypercapnia",
     locationId: "respiratory",
     message: "Ward asking about drowsy COPD patient, gas just back",
+    revealAtIntel1:
+      "Called back — the nurse reports the patient is increasingly drowsy, pH 7.24, pCO2 9.1, RR 8. She says 'he's not right'.",
+    revealAtIntel2:
+      "Full picture: 71M known COPD, now barely rousable, with type 2 respiratory failure on the gas. Needs urgent NIV and ICU awareness — not a routine NIV plan.",
     sender: "Respiratory nurse",
     source: "pager",
     claimedUrgency: "can you advise NIV plan",
@@ -102,6 +108,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     locationId: "cardiology",
     message:
       "Patient on CCU monitor in broad complex tachycardia, nurse wants review",
+    revealAtIntel2:
+      "Full picture: sustained broad-complex tachycardia at 180, BP dropping, chest tight. Treat as VT — needs senior support and pads on now.",
     sender: "CCU nurse",
     source: "pager",
     claimedUrgency: "urgent",
@@ -141,6 +149,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     locationId: "mau",
     message:
       "New rash and wheeze after IV antibiotic, nurse asking if chlorphenamine enough",
+    revealAtIntel2:
+      "Full picture: spreading urticaria, audible wheeze and a falling BP minutes after IV co-amoxiclav. This is anaphylaxis — IM adrenaline now, chlorphenamine is not enough.",
     sender: "MAU nurse",
     source: "pager",
     claimedUrgency: "quick advice",
@@ -179,6 +189,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "elderly_stroke_thrombolysis_window",
     locationId: "elderly",
     message: "New facial droop noticed on bay, last seen well maybe midnight",
+    revealAtIntel1:
+      "Reviewed — left facial droop and slurred speech, obs otherwise stable. The nurse is now unsure exactly when last seen normal; it could be inside the thrombolysis window.",
+    revealAtIntel2:
+      "Full picture: 78M, NIHSS 6, last definitely well 23:40, glucose normal, no anticoagulants. Possible thrombolysis candidate but could be a mimic — needs urgent CT and the stroke team now.",
     sender: "Ward nurse",
     source: "pager",
     claimedUrgency: "doctor review please",
@@ -218,6 +232,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     locationId: "surgical",
     message:
       "Surgical outlier vomiting coffee grounds, Hb dropped since evening",
+    revealAtIntel2:
+      "Full picture: ongoing coffee-ground vomiting, Hb down 22 points, tachycardic. An active upper GI bleed — needs IV access, a crossmatch and an endoscopy referral.",
     sender: "Surgical ward nurse",
     source: "pager",
     claimedUrgency: "medical review requested",
@@ -256,6 +272,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "mau_dka_new_diagnosis",
     locationId: "mau",
     message: "Ketones 6.2 on new diabetic admission, nurse asking for fluids",
+    revealAtIntel2:
+      "Full picture: ketones 6.2, glucose 28, pH 7.21, bicarb 12 — established DKA. Needs fixed-rate insulin and the full DKA protocol, not just fluids.",
     sender: "MAU nurse",
     source: "pager",
     claimedUrgency: "urgent prescription",
@@ -294,6 +312,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "icu_unexpected_stepdown_decline",
     locationId: "icu",
     message: "ICU outreach asking you to see recent stepdown, NEWS now 9",
+    revealAtIntel2:
+      "Full picture: NEWS 9 driven by a rising respiratory rate and falling sats on a recent stepdown — an early failed stepdown. Needs joint review and likely ICU readmission.",
     sender: "ICU outreach nurse",
     source: "pager",
     claimedUrgency: "joint review",
@@ -332,6 +352,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "pharmacy_potassium_critical",
     locationId: "pharmacy",
     message: "Lab phoned K 6.9, sample not haemolysed, patient on renal ward",
+    revealAtIntel2:
+      "Full picture: K 6.9, non-haemolysed, on a renal patient with ECG changes. A true hyperkalaemic emergency — calcium gluconate and insulin-dextrose now.",
     sender: "On-call pharmacist",
     source: "pager",
     claimedUrgency: "please action tonight",
@@ -371,6 +393,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     locationId: "radiology",
     message:
       "Radiology asking who is taking responsibility for large saddle PE report",
+    revealAtIntel1:
+      "Called radiology — the CTPA shows a large saddle PE. The patient is a postnatal woman on the ward, currently tachycardic and breathless, and nobody has actioned it.",
+    revealAtIntel2:
+      "Full picture: 32F, five days postpartum, HR 120, BP 88 systolic, hypoxic. Saddle PE with RV strain — high-risk PE with shock. Needs immediate senior input on thrombolysis.",
     sender: "Radiology registrar",
     source: "pager",
     claimedUrgency: "please clarify team",
@@ -409,6 +435,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "mau_mild_chest_pain_trop_rise",
     locationId: "mau",
     message: "Chest pain settled, repeat trop has gone up a bit",
+    revealAtIntel1:
+      "Looked at it — troponin has risen from 18 to 320 and the ECG now shows new T-wave inversion in the lateral leads. Not as benign as it sounded.",
+    revealAtIntel2:
+      "Full picture: 64M with a dynamic troponin and evolving ECG changes — this is an NSTEMI. Needs antiplatelets, anticoagulation and a cardiology referral, not routine advice.",
     sender: "MAU FY1",
     source: "pager",
     claimedUrgency: "routine senior advice",
@@ -447,6 +477,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     locationId: "elderly",
     message:
       "Patient a bit more confused than baseline, obs machine not available yet",
+    revealAtIntel1:
+      "Got obs done — temp 38.6, HR 110, BP 98 systolic. This is more than confusion; she looks septic, though the source isn't obvious yet.",
+    revealAtIntel2:
+      "Full picture: 84F with new delirium driven by urosepsis — lactate 2.8, CRP high. Needs the sepsis six and review now, not a morning ward-round job.",
     sender: "Elderly care nurse",
     source: "pager",
     claimedUrgency: "non-urgent review",
@@ -484,6 +518,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "surgical_abnormal_lft_unowned",
     locationId: "surgical",
     message: "Surgical ward has abnormal bloods nobody owns, bilirubin 78",
+    revealAtIntel1:
+      "Pulled the chart — bilirubin 78, ALP 410, and the patient is febrile at 38.4 with right upper quadrant pain. This isn't just deranged LFTs.",
+    revealAtIntel2:
+      "Full picture: Charcot's triad — fever, jaundice, RUQ pain — so ascending cholangitis. Needs blood cultures, antibiotics and an urgent surgical/biliary discussion.",
     sender: "Night coordinator",
     source: "pager",
     claimedUrgency: "please tidy before morning",
@@ -521,6 +559,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "resp_small_oxygen_increase",
     locationId: "respiratory",
     message: "Oxygen gone from 2L to 4L, nurse says otherwise comfortable",
+    revealAtIntel1:
+      "Checked — she's actually on 6L now, sats 91%, RR 26. 'Comfortable' was optimistic; something is changing.",
+    revealAtIntel2:
+      "Full picture: a steadily rising oxygen requirement with a new oxygen-dependent infiltrate — likely evolving pneumonia or aspiration. Needs review, a gas and a chest film now.",
     sender: "Respiratory nurse",
     source: "pager",
     claimedUrgency: "routine review",
@@ -558,6 +600,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "mau_low_sodium_drowsy",
     locationId: "mau",
     message: "Na 116 on admission bloods, patient sleepy but had zopiclone",
+    revealAtIntel1:
+      "Reviewed — only rousable to voice, and the drowsiness predates the zopiclone. Sodium is 116. This isn't sedation.",
+    revealAtIntel2:
+      "Full picture: symptomatic severe hyponatraemia with a dropping GCS and seizure risk. Needs senior input on hypertonic saline and close monitoring — don't correct too fast.",
     sender: "MAU FY1",
     source: "pager",
     claimedUrgency: "bloods advice",
@@ -595,6 +641,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "cardiology_post_pci_sweaty",
     locationId: "cardiology",
     message: "Post-PCI patient sweaty and anxious, ECG machine being borrowed",
+    revealAtIntel1:
+      "Got an ECG — ST elevation in the territory he was stented this morning. He's sweaty, clammy and in pain. This is acute.",
+    revealAtIntel2:
+      "Full picture: acute stent thrombosis — re-occlusion of the culprit vessel. A cath-lab emergency. Needs immediate cardiology and reactivation of the primary PCI pathway.",
     sender: "Cardiology nurse",
     source: "pager",
     claimedUrgency: "review after ED if possible",
@@ -633,6 +683,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "ed_quiet_abdominal_pain",
     locationId: "ed_resus",
     message: "ED says abdominal pain patient looks grey, lactate 5 but BP okay",
+    revealAtIntel1:
+      "Reviewed — pain is out of proportion to a soft abdomen, AF on the monitor, lactate now 6.2. BP is holding but he looks awful.",
+    revealAtIntel2:
+      "Full picture: pain out of proportion plus AF plus a rising lactate is mesenteric ischaemia until proven otherwise. Needs an urgent CT angiogram and surgical referral now.",
     sender: "ED nurse in charge",
     source: "pager",
     claimedUrgency: "medical opinion",
@@ -672,6 +726,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     locationId: "elderly",
     message:
       "Confused patient found wandering after unwitnessed fall, on apixaban",
+    revealAtIntel1:
+      "Looked into it — unwitnessed fall, now a bruise over the temple and more drowsy than baseline, and she's on apixaban. An unwitnessed head injury on a DOAC.",
+    revealAtIntel2:
+      "Full picture: high-risk head injury on anticoagulation. Needs a CT head within the hour and consideration of reversal if a bleed is found.",
     sender: "Elderly care nurse",
     source: "pager",
     claimedUrgency: "fall review form",
@@ -709,6 +767,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "ward_warfarin_prescription",
     locationId: "elderly",
     message: "Please prescribe tonight's warfarin, INR 2.4",
+    revealAtIntel2:
+      "Confirmed — INR 2.4, in range, on a stable maintenance dose. Genuinely routine: prescribe the usual dose, and safe to delegate.",
     sender: "Ward nurse",
     source: "pager",
     claimedUrgency: "routine prescription",
@@ -730,6 +790,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "mau_discharge_tto_query",
     locationId: "mau",
     message: "Discharge TTO missing inhaler, patient transport booked for 0700",
+    revealAtIntel2:
+      "Confirmed — just the inhaler missing from the TTO before a 07:00 transport. Administrative but time-bound; sort or delegate before the patient leaves.",
     sender: "MAU nurse",
     source: "pager",
     claimedUrgency: "please sort overnight",
@@ -762,6 +824,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "pharmacy_missing_antibiotic_stop_date",
     locationId: "pharmacy",
     message: "Antibiotic review box blank for patient on day 5 co-amoxiclav",
+    revealAtIntel2:
+      "Confirmed — day 5 co-amoxiclav with a blank review date. Set a stop/review date per stewardship; not urgent but worth closing off.",
     sender: "On-call pharmacist",
     source: "pager",
     claimedUrgency: "stewardship query",
@@ -783,6 +847,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "resp_neb_frequency",
     locationId: "respiratory",
     message: "Can salbutamol nebs be changed from PRN to regular overnight",
+    revealAtIntel2:
+      "Confirmed — a wheezy patient who genuinely needs regular rather than PRN salbutamol overnight. A straightforward prescribing change.",
     sender: "Respiratory nurse",
     source: "pager",
     claimedUrgency: "prescribing request",
@@ -804,6 +870,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "relatives_update_waiting",
     locationId: "elderly",
     message: "Relatives asking for update before they leave, patient stable",
+    revealAtIntel2:
+      "Confirmed — the patient is stable and the family just want reassurance before leaving. Low clinical priority, but a two-minute call keeps relations good.",
     sender: "Ward nurse",
     source: "pager",
     claimedUrgency: "family waiting",
@@ -825,6 +893,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "cannula_for_iv_fluids",
     locationId: "mau",
     message: "Cannula tissued, needs IV fluids overnight",
+    revealAtIntel2:
+      "Confirmed — a tissued cannula with fluids genuinely due overnight. Needs re-siting; safe to delegate to a competent pair of hands.",
     sender: "MAU nurse",
     source: "pager",
     claimedUrgency: "cannula please",
@@ -852,6 +922,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "routine_vte_risk",
     locationId: "surgical",
     message: "VTE assessment missing for medical outlier on surgical ward",
+    revealAtIntel2:
+      "Confirmed — the VTE assessment is genuinely outstanding on a medical outlier. Quick to complete and easily delegated.",
     sender: "Surgical ward nurse",
     source: "pager",
     claimedUrgency: "needs completing tonight",
@@ -873,6 +945,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "insulin_sliding_scale_review",
     locationId: "mau",
     message: "Variable rate insulin prescription expires at 0400",
+    revealAtIntel2:
+      "Confirmed — the variable-rate insulin expires at 04:00 and the patient still needs it. Review and re-prescribe before it lapses to avoid a gap.",
     sender: "MAU nurse",
     source: "pager",
     claimedUrgency: "please review",
@@ -899,6 +973,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "urgent_paracetamol_renewal",
     locationId: "elderly",
     message: "Urgent: paracetamol not prescribed and patient wants it now",
+    revealAtIntel2:
+      "Confirmed — a simple paracetamol re-prescription flagged 'urgent' that isn't. Prescribe or delegate; don't let the label jump the queue.",
     sender: "Ward nurse",
     source: "pager",
     claimedUrgency: "urgent",
@@ -920,6 +996,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "sleeping_tablet_request",
     locationId: "surgical",
     message: "Patient asking for zopiclone, never had it before",
+    revealAtIntel2:
+      "Confirmed — a patient requesting zopiclone they've never had, with no clinical indication overnight. Reasonable to decline and offer non-drug measures.",
     sender: "Surgical ward nurse",
     source: "pager",
     claimedUrgency: "urgent patient request",
@@ -984,6 +1062,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     id: "urgent_fluid_balance_rewrite",
     locationId: "respiratory",
     message: "Urgent: fluid balance chart is messy, can you rewrite totals",
+    revealAtIntel2:
+      "Confirmed — they want the fluid-chart totals tidied, nothing clinical. Not a doctor job tonight; redirect to nursing.",
     sender: "Ward nurse",
     source: "pager",
     claimedUrgency: "urgent",
@@ -1006,6 +1086,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     locationId: "mau",
     message:
       "Can you rank all medical outliers by discharge likelihood before 0600",
+    revealAtIntel2:
+      "Confirmed — a bed-pressure ranking exercise dressed up as urgent. Not a clinical priority overnight; push back or hand it to the bed manager.",
     sender: "Bed manager",
     source: "pager",
     claimedUrgency: "urgent bed pressure",
@@ -1034,6 +1116,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     locationId: "mau",
     message:
       "EPR downtime, lab results printing in ED only, nobody knows whose potassium is high",
+    revealAtIntel1:
+      "Tracked it down — the high potassium is 6.5 on a renal-ward patient, with the result stuck in the ED printer for two hours. Nobody had seen it.",
+    revealAtIntel2:
+      "Full picture: K 6.5 with ECG changes on a dialysis patient, lost in the EPR downtime. Needs treating now, plus a systematic sweep of all the unlinked results.",
     sender: "Night coordinator",
     source: "system",
     claimedUrgency: "systems issue",
@@ -1073,6 +1159,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     locationId: "elderly",
     message:
       "Drug chart missing for bay patient due IV antibiotics and insulin",
+    revealAtIntel2:
+      "Full picture: without the chart the patient will miss IV antibiotics and insulin doses overnight. Rewrite the critical meds now and report the lost chart.",
     sender: "Ward nurse",
     source: "pager",
     claimedUrgency: "chart missing",
@@ -1112,6 +1200,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     locationId: "radiology",
     message:
       "Radiology wants consultant name before scanning drowsy patient with headache",
+    revealAtIntel1:
+      "Spoke to radiology — they'll scan but want a named consultant. The patient is genuinely drowsy with a new severe headache; the scan is clinically urgent.",
+    revealAtIntel2:
+      "Full picture: thunderclap headache with a reduced GCS — possible subarachnoid or intracranial bleed. The scan must not be delayed by paperwork; escalate to get it authorised now.",
     sender: "Radiology coordinator",
     source: "pager",
     claimedUrgency: "protocol query",
@@ -1150,6 +1242,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     locationId: "pharmacy",
     message:
       "Ward printer failed, nurses cannot print replacement insulin chart",
+    revealAtIntel1:
+      "Checked — without the chart the variable-rate insulin can't be continued safely and the next dose is due soon. It's a patient-safety issue, not just IT.",
+    revealAtIntel2:
+      "Full picture: insulin will be missed across the round if nothing is done. The quick fix is a handwritten interim chart now; flag IT for the systemic problem.",
     sender: "Night coordinator",
     source: "system",
     claimedUrgency: "IT issue",
@@ -1186,6 +1282,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     locationId: "mau",
     message:
       "Blood gas analyser rejecting all samples, ED says use theirs only for resus",
+    revealAtIntel1:
+      "Looked into it — the only working analyser is in ED resus, so any sick MAU patient needing a gas now means a trip across the hospital.",
+    revealAtIntel2:
+      "Full picture: gas turnaround is badly delayed for everyone tonight. Plan: triage who genuinely needs a gas, use ED's for the sickest, and escalate the fault.",
     sender: "MAU nurse in charge",
     source: "system",
     claimedUrgency: "equipment issue",
@@ -1222,6 +1322,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     locationId: "pharmacy",
     message:
       "No green cannulas left on MAU, stores locked, three IV starts pending",
+    revealAtIntel1:
+      "Checked — three patients need IV access for antibiotics and fluids and there's genuinely no kit on the ward; stores are locked overnight.",
+    revealAtIntel2:
+      "Full picture: time-critical IV antibiotics are at risk. Plan: borrow from a neighbouring ward now, get site to open stores, and don't let the sepsis dose slip.",
     sender: "MAU nurse in charge",
     source: "system",
     claimedUrgency: "stock issue",
@@ -1258,6 +1362,10 @@ const rawBleepPack: RawBleepPackItem[] = [
     locationId: "estates",
     message:
       "Ceiling leak over corridor outside side room, patient notes getting damp",
+    revealAtIntel1:
+      "Had a look — the leak is over a corridor, not a patient. The main risk is wet notes and a slip hazard; no immediate clinical danger.",
+    revealAtIntel2:
+      "Full picture: genuinely an estates/facilities job. Move the notes and trolley, flag the slip risk, and hand it to site — not a medical priority.",
     sender: "Site practitioner",
     source: "pager",
     claimedUrgency: "estates aware, need clinical decision",
