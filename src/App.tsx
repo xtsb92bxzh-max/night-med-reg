@@ -570,6 +570,10 @@ function TaskPanel({
             : ""}
         </span>
       </div>
+      <p className="kbd-hint muted">
+        Keys (top bleep): A attend · C clarify · E escalate · H handover · D
+        defer · X ignore. In an encounter, press 1–3 to choose.
+      </p>
       {regSenseTasks.length > 0 && !compact && (
         <div className="reg-sense-strip">
           <strong>Reg Sense</strong>
@@ -1476,6 +1480,56 @@ export default function App() {
   useEffect(() => {
     if (state.activeEncounterId) setMobileTab("encounter");
   }, [state.activeEncounterId]);
+
+  // Keyboard shortcuts for the desktop loop: act on the top bleep, or pick an
+  // encounter choice by number. Ignored when the game is over, a Datix modal is
+  // up, or focus is in a text field.
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (state.ended || state.datixAlert) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      const encounter = encounters.find(
+        (item) => item.id === state.activeEncounterId,
+      );
+      if (encounter) {
+        const index = Number(event.key) - 1;
+        if (!Number.isNaN(index) && index >= 0) {
+          const choices = orderedEncounterChoices(state, encounter);
+          if (choices[index]) {
+            event.preventDefault();
+            setState(chooseEncounterOption(state, choices[index].id));
+          }
+        }
+        return;
+      }
+      const top = liveTasks(state).find((task) => task.source !== "treat");
+      if (!top) return;
+      const action: Record<string, (next: GameState) => GameState> = {
+        a: (s) => respondToPager(s, top.id),
+        c: (s) => clarifyTask(s, top.id),
+        e: (s) => escalateTask(s, top.id),
+        h: (s) => markTaskForHandover(s, top.id),
+        d: (s) => deferPager(s, top.id),
+        x: (s) => ignorePager(s, top.id),
+      };
+      const run = action[event.key.toLowerCase()];
+      if (run) {
+        event.preventDefault();
+        setState(run(state));
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [state]);
 
   if (isMobile) {
     return (
