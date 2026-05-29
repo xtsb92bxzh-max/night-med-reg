@@ -138,7 +138,14 @@ function StatsPanel({
           return (
             <div className="meter-row compact" key={label}>
               <span>{label}</span>
-              <div className="meter" aria-label={`${label} ${value}`}>
+              <div
+                className="meter"
+                role="meter"
+                aria-label={`${label} ${value}`}
+                aria-valuenow={value}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
                 <b style={{ width: `${value}%` }} />
               </div>
               <strong>{value}</strong>
@@ -1132,13 +1139,27 @@ function MobileHeader({
       <div className="mob-vitals">
         <div className="mob-vital-row">
           <span>Stam</span>
-          <div className="meter" aria-label={`Stamina ${state.stamina}`}>
+          <div
+            className="meter"
+            role="meter"
+            aria-label={`Stamina ${state.stamina}`}
+            aria-valuenow={state.stamina}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
             <b style={{ width: `${state.stamina}%` }} />
           </div>
         </div>
         <div className="mob-vital-row">
           <span>Safe</span>
-          <div className="meter" aria-label={`Safety ${state.patientSafety}`}>
+          <div
+            className="meter"
+            role="meter"
+            aria-label={`Safety ${state.patientSafety}`}
+            aria-valuenow={state.patientSafety}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
             <b style={{ width: `${state.patientSafety}%` }} />
           </div>
         </div>
@@ -1181,7 +1202,14 @@ function MobileInfoTab({
           return (
             <div className="meter-row" key={label}>
               <span>{label}</span>
-              <div className="meter" aria-label={`${label} ${value}`}>
+              <div
+                className="meter"
+                role="meter"
+                aria-label={`${label} ${value}`}
+                aria-valuenow={value}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
                 <b style={{ width: `${value}%` }} />
               </div>
               <strong>{value}</strong>
