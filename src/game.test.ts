@@ -8,6 +8,7 @@ import {
 } from "./content";
 import { bleepPackTasks } from "./bleepPack";
 import { regSensePackTasks } from "./regSensePack";
+import { scenarioPackTasks } from "./scenarioPack";
 import {
   advanceTime,
   brewCoffee,
@@ -742,6 +743,21 @@ describe("Night Med Reg core logic", () => {
     const missing = bleepPackTasks
       .filter((t) => t.vague || t.regSense || t.category === "ambiguous")
       .filter((t) => !t.revealAtIntel1 || !t.revealAtIntel2)
+      .map((t) => t.id);
+    expect(missing).toEqual([]);
+  });
+
+  it("every ambiguous pager event carries both clarify reveals", () => {
+    const missing = pagerEvents
+      .filter((e) => e.category === "ambiguous")
+      .filter((e) => !e.revealAtIntel1 || !e.revealAtIntel2)
+      .map((e) => e.id);
+    expect(missing).toEqual([]);
+  });
+
+  it("every scenario pack task carries an intel-2 clarify reveal", () => {
+    const missing = scenarioPackTasks
+      .filter((t) => !t.revealAtIntel2)
       .map((t) => t.id);
     expect(missing).toEqual([]);
   });

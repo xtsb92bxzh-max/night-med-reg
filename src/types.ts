@@ -146,6 +146,8 @@ export interface PagerEvent {
   timeToDeterioration: number;
   category: EventCategory;
   encounterId?: string;
+  revealAtIntel1?: string;
+  revealAtIntel2?: string;
   ignored: Consequence;
   handledWell: Consequence;
 }

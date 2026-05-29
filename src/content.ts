@@ -1616,6 +1616,10 @@ export const pagerEvents: PagerEvent[] = [
     id: "p_nstemi",
     locationId: "cardiology",
     message: "Chest pain, ECG probably fine but could you glance?",
+    revealAtIntel1:
+      "Glanced at it — the ECG has new T-wave inversion in the lateral leads and the pain is still there. Not 'probably fine'.",
+    revealAtIntel2:
+      "Full picture: dynamic ECG changes with ongoing pain and a mildly raised troponin — NSTEMI. Needs antiplatelets, anticoagulation and a cardiology referral, not just a glance.",
     sender: "Cardiology ward nurse",
     claimedUrgency: "routine",
     trueUrgency: "high",
@@ -1642,6 +1646,10 @@ export const pagerEvents: PagerEvent[] = [
     id: "p_delirium",
     locationId: "elderly",
     message: "Patient trying to leave ward, says bus is coming",
+    revealAtIntel1:
+      "Reviewed — she's agitated and disorientated, but this is a new change from her baseline. She hasn't been confused before.",
+    revealAtIntel2:
+      "Full picture: acute delirium, not baseline behaviour. There will be a precipitant — screen for infection, retention, pain and medication changes before managing the agitation.",
     sender: "Care of elderly nurse",
     claimedUrgency: "urgent",
     trueUrgency: "medium",
@@ -1685,6 +1693,10 @@ export const pagerEvents: PagerEvent[] = [
     id: "p_hyperk",
     locationId: "elderly",
     message: "K is 7.1 but lab says maybe repeat?",
+    revealAtIntel1:
+      "Checked — the sample is non-haemolysed and the patient has an AKI. K 7.1 on a renal patient is real.",
+    revealAtIntel2:
+      "Full picture: true hyperkalaemia 7.1 with peaked T waves on ECG. A cardiac emergency — calcium gluconate now, followed by insulin-dextrose. Don't just repeat the blood.",
     sender: "Ward nurse",
     claimedUrgency: "routine bloods",
     trueUrgency: "critical",
@@ -1711,6 +1723,10 @@ export const pagerEvents: PagerEvent[] = [
     id: "p_pe",
     locationId: "respiratory",
     message: "Post-op patient anxious and short of breath, CXR normal",
+    revealAtIntel1:
+      "Assessed — HR 118, sats 92% on 4L, and the leg is swollen on the operated side. A normal CXR does not rule out PE.",
+    revealAtIntel2:
+      "Full picture: clinical PE until proven otherwise — day-three post-op, hypoxic, tachycardic, unilateral leg swelling. Needs CTPA and anticoagulation, not routine review.",
     sender: "Surgical FY1",
     claimedUrgency: "routine review",
     trueUrgency: "high",
@@ -1840,6 +1856,10 @@ export const pagerEvents: PagerEvent[] = [
     id: "p_radiology",
     locationId: "radiology",
     message: "CT request rejected: 'please correlate clinically'",
+    revealAtIntel1:
+      "Called radiology — the rejection is a formality; with the updated clinical picture they're willing to scan, but need a named consultant.",
+    revealAtIntel2:
+      "Full picture: the CT is genuinely indicated and the rejection is a process issue, not a clinical one. Escalate to get the consultant's name on it — don't let admin delay a necessary scan.",
     sender: "Radiographer",
     claimedUrgency: "routine admin",
     trueUrgency: "medium",
@@ -1889,6 +1909,10 @@ export const pagerEvents: PagerEvent[] = [
     id: "p_missing_chart",
     locationId: "surgical",
     message: "Missing drug chart; patient due Parkinson's meds",
+    revealAtIntel1:
+      "Looked into it — two Parkinson's doses have already been missed and the patient is noticeably more rigid and quiet.",
+    revealAtIntel2:
+      "Full picture: missed levodopa causing early akinetic crisis with aspiration risk. Rewrite the chart now and give the dose by the right route — these meds can never be simply omitted.",
     sender: "Surgical nurse",
     claimedUrgency: "urgent",
     trueUrgency: "medium",
@@ -1968,6 +1992,10 @@ export const pagerEvents: PagerEvent[] = [
     locationId: "elderly",
     message:
       "Care of elderly: patient on lithium confused and trembling. GP recently added a blood pressure tablet.",
+    revealAtIntel1:
+      "Reviewed — the new BP tablet is an ACE inhibitor that was started a fortnight ago, and the lithium level came back at 2.4. This isn't confusion from old age.",
+    revealAtIntel2:
+      "Full picture: lithium toxicity caused by ACE-inhibitor-induced rise in lithium levels. Stop lithium and the ACE inhibitor, push fluids and get toxicology advice — level alone doesn't tell you everything.",
     sender: "Elderly care nurse",
     claimedUrgency: "review when possible",
     trueUrgency: "high",
@@ -2000,6 +2028,10 @@ export const pagerEvents: PagerEvent[] = [
     locationId: "mau",
     message:
       "MAU: hypertensive crisis, BP 228/136, months of episodic sweating and palpitations.",
+    revealAtIntel1:
+      "Reviewed — the episodic sweating, headaches and palpitations have been going on for months and the BP swings are extreme. This is not garden-variety hypertension.",
+    revealAtIntel2:
+      "Full picture: the triad of hypertension, sweating and palpitations points to a phaeochromocytoma crisis. Avoid beta-blockers first (risk of unopposed alpha), use phentolamine or labetalol last, and get endocrinology urgently.",
     sender: "Admitting nurse",
     claimedUrgency: "urgent",
     trueUrgency: "high",
