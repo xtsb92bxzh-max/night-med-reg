@@ -41,6 +41,7 @@ import type {
   ResourceItemId,
   TeamMemberId,
 } from "./types";
+import { clearGame, loadGame, saveGame } from "./persistence";
 
 const statRows: [string, keyof GameState][] = [
   ["Stamina", "stamina"],
@@ -1452,13 +1453,25 @@ function MobileTabBar({
 
 export default function App() {
   const newRun = () => initialGameState(randomRunSeed());
-  const [state, setState] = useState<GameState>(() => newRun());
+  // Resume an in-progress shift if one was saved, otherwise start fresh.
+  const [state, setState] = useState<GameState>(() => loadGame() ?? newRun());
   const currentEncounter = useMemo(
     () => encounters.find((item) => item.id === state.activeEncounterId),
     [state.activeEncounterId],
   );
   const isMobile = useIsMobile();
   const [mobileTab, setMobileTab] = useState<MobileTab>("map");
+
+  // Discard any saved run and begin a new shift.
+  const restart = () => {
+    clearGame();
+    setState(newRun());
+  };
+
+  // Persist the run whenever it changes; finished runs clear the save.
+  useEffect(() => {
+    saveGame(state);
+  }, [state]);
 
   useEffect(() => {
     if (state.activeEncounterId) setMobileTab("encounter");
@@ -1467,7 +1480,7 @@ export default function App() {
   if (isMobile) {
     return (
       <main className="app mobile-app">
-        <MobileHeader state={state} onRestart={() => setState(newRun())} />
+        <MobileHeader state={state} onRestart={restart} />
         <div className="mobile-content">
           {mobileTab === "map" && (
             <MapPanel state={state} setState={setState} />
@@ -1482,7 +1495,7 @@ export default function App() {
             <MobileInfoTab
               state={state}
               setState={setState}
-              onRestart={() => setState(newRun())}
+              onRestart={restart}
             />
           )}
           {mobileTab === "help" && <MobileHelpTab />}
@@ -1497,16 +1510,14 @@ export default function App() {
             onDismiss={() => setState(dismissDatixAlert(state))}
           />
         )}
-        {state.ended && (
-          <EndScreen state={state} onRestart={() => setState(newRun())} />
-        )}
+        {state.ended && <EndScreen state={state} onRestart={restart} />}
       </main>
     );
   }
 
   return (
     <main className="app">
-      <StatsPanel state={state} onRestart={() => setState(newRun())} />
+      <StatsPanel state={state} onRestart={restart} />
       <div
         className={state.activeEncounterId ? "layout encounter-mode" : "layout"}
       >
@@ -1532,9 +1543,7 @@ export default function App() {
           onDismiss={() => setState(dismissDatixAlert(state))}
         />
       )}
-      {state.ended && (
-        <EndScreen state={state} onRestart={() => setState(newRun())} />
-      )}
+      {state.ended && <EndScreen state={state} onRestart={restart} />}
     </main>
   );
 }

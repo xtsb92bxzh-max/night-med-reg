@@ -2029,7 +2029,17 @@ export function chooseEncounterOption(
   const step = activeEncounterView(encounter, state.activeEncounterStepId);
   const choices = step?.choices ?? encounter?.choices;
   const choice = choices?.find((item) => item.id === choiceId);
-  if (!encounter || !choice || state.ended) return state;
+  if (!encounter || !choice || state.ended) {
+    // A missing encounter/choice is a programming error, not a player action.
+    // Warn (so it surfaces in dev/tests) but return state unchanged rather than
+    // crashing the run.
+    if (!state.ended && (!encounter || !choice)) {
+      console.warn(
+        `chooseEncounterOption: no choice "${choiceId}" for encounter "${state.activeEncounterId}" at step "${state.activeEncounterStepId}"`,
+      );
+    }
+    return state;
+  }
   let next = applyConsequence(state, choice.consequence);
   const elapsed = choice.consequence.time ?? 0;
   if (elapsed > 0) next = runShiftDirector(next, elapsed);

@@ -9,6 +9,12 @@ expect.extend(toHaveNoViolations);
 // React Testing Library: unmount components between tests.
 afterEach(() => {
   cleanup();
+  // Prevent a persisted run from one component test leaking into the next.
+  try {
+    window.localStorage?.clear();
+  } catch {
+    // No localStorage in this environment; nothing to clear.
+  }
 });
 
 // jsdom does not implement matchMedia, which useIsMobile() relies on. Provide

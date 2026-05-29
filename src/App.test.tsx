@@ -10,7 +10,8 @@ vi.mock("./game", async (importOriginal) => {
 });
 
 import App from "./App";
-import { initialGameState } from "./game";
+import { advanceTime, initialGameState } from "./game";
+import { saveGame } from "./persistence";
 
 const STAT_LABELS = [
   "Stamina",
@@ -105,6 +106,21 @@ describe("App interactions", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("button", { name: /restart/i }));
+    expect(screen.getAllByText("21:00").length).toBeGreaterThan(0);
+  });
+});
+
+describe("App persistence", () => {
+  it("resumes a saved in-progress shift on mount", () => {
+    // Pre-seed a save that is 60 minutes into the shift (clock 22:00).
+    saveGame(advanceTime(initialGameState(4242), 60));
+    render(<App />);
+    expect(screen.getAllByText("22:00").length).toBeGreaterThan(0);
+    expect(screen.queryByText("21:00")).not.toBeInTheDocument();
+  });
+
+  it("starts a fresh shift when there is no save", () => {
+    render(<App />);
     expect(screen.getAllByText("21:00").length).toBeGreaterThan(0);
   });
 });
