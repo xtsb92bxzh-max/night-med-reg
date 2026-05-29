@@ -19,6 +19,8 @@ const rawRegSensePack: RegSensePackItem[] = [
     timeToDeterioration: 45,
     vague: true,
     regSense: true,
+    revealAtIntel1: "Checked the notes — O2 went from 2L to 4L to now 6L over three hours. Nobody has written why. Sats currently 93%.",
+    revealAtIntel2: "Spoke to the nurse: patient has been increasing work of breathing over the past hour. No clear cause documented. Chest sounds wet on brief assessment — likely fluid overload or occult pneumonia.",
     weight: 9,
     phases: ["early", "deep"],
     ignored: {
@@ -52,6 +54,8 @@ const rawRegSensePack: RegSensePackItem[] = [
     timeToDeterioration: 20,
     vague: true,
     regSense: true,
+    revealAtIntel1: "Pulled the result — K+ 6.1 from four hours ago, flagged critical by lab. Repeat is still 'pending'. Patient has AKI on background CKD.",
+    revealAtIntel2: "ECG shows peaked T waves and a slightly wide QRS. Patient is oliguric. This is hyperkalaemic emergency — needs calcium gluconate and urgent treatment, not just a repeat blood.",
     weight: 12,
     phases: ["early", "deep", "pre_handover"],
     ignored: {

@@ -34,6 +34,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     timeToDeterioration: 10,
     vague: false,
     regSense: false,
+    revealAtIntel1: "Called back — ED SHO says BP now 70 systolic despite 1L fluid, temp 38.9, HR 118. Looks unwell. She's worried.",
+    revealAtIntel2: "Full picture: 67F, 3 days of rigors and confusion. CRP 280, lactate 3.8. Likely gram-negative sepsis — needs senior review now.",
     weight: 12,
     phases: ["early", "deep"],
     ignored: {
@@ -72,6 +74,8 @@ const rawBleepPack: RawBleepPackItem[] = [
     timeToDeterioration: 15,
     vague: true,
     regSense: false,
+    revealAtIntel1: "Called back — nurse reports patient increasingly drowsy, pH 7.24, pCO2 9.1. She says 'he's not right'. RR 8.",
+    revealAtIntel2: "Full picture: 71M known COPD, now barely rousable. Gas shows type 2 failure, pH acidotic. Needs urgent NIV and ICU awareness — not a routine NIV plan.",
     weight: 11,
     phases: ["early", "deep", "pre_handover"],
     ignored: {

@@ -179,6 +179,8 @@ export interface ActiveTask {
   intelLevel: TaskIntelLevel;
   markedForHandover: boolean;
   clarifiedAt?: number;
+  revealAtIntel1?: string;
+  revealAtIntel2?: string;
   escalationHint?: EscalationTarget;
   ignored: Consequence;
   handledWell: Consequence;
@@ -200,6 +202,8 @@ export interface TaskTemplate {
   timeToDeterioration: number;
   vague?: boolean;
   regSense?: boolean;
+  revealAtIntel1?: string;
+  revealAtIntel2?: string;
   weight: number;
   phases?: ShiftPhase[];
   ignored: Consequence;
