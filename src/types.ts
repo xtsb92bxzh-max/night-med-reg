@@ -23,17 +23,42 @@ export type EventCategory =
 
 export type ShiftPhase = "early" | "deep" | "pre_handover";
 
-export type TaskSource = "pager" | "handover" | "reg_sense" | "ward_round" | "system" | "treat";
+export type TaskSource =
+  | "pager"
+  | "handover"
+  | "reg_sense"
+  | "ward_round"
+  | "system"
+  | "treat";
 
-export type TeamMemberId = "fy1" | "trusted_fy2" | "locum_no_login" | "bed_manager";
+export type TeamMemberId =
+  | "fy1"
+  | "trusted_fy2"
+  | "locum_no_login"
+  | "bed_manager";
 
-export type TaskStatus = "new" | "deferred" | "delegated" | "deteriorated" | "resolved";
+export type TaskStatus =
+  | "new"
+  | "deferred"
+  | "delegated"
+  | "deteriorated"
+  | "resolved";
 
 export type TaskIntelLevel = 0 | 1 | 2;
 
-export type EscalationTarget = "consultant" | "ICU" | "site" | "specialty" | "radiology";
+export type EscalationTarget =
+  | "consultant"
+  | "ICU"
+  | "site"
+  | "specialty"
+  | "radiology";
 
-export type WardMomentumTag = "flow" | "fragile" | "understaffed" | "systemBlocked" | "quietlyUnsafe";
+export type WardMomentumTag =
+  | "flow"
+  | "fragile"
+  | "understaffed"
+  | "systemBlocked"
+  | "quietlyUnsafe";
 
 export type ResourceItemId =
   | "coffee"
