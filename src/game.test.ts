@@ -7,6 +7,7 @@ import {
   taskTemplates,
 } from "./content";
 import { bleepPackTasks } from "./bleepPack";
+import { regSensePackTasks } from "./regSensePack";
 import {
   advanceTime,
   brewCoffee,
@@ -703,6 +704,46 @@ describe("Night Med Reg core logic", () => {
     expect(next.minute).toBeGreaterThan(state.minute);
     expect(clarified.intelLevel).toBeGreaterThan(task.intelLevel);
     expect(next.handoverMemory.clarifiedRisks.length).toBeGreaterThan(0);
+  });
+
+  it("clarifying an intel-0 task surfaces its first-stage reveal in the log", () => {
+    const state = initialGameState();
+    const task = state.activeTasks.find((item) => item.id === "t_reg_1")!;
+    expect(task.intelLevel).toBe(0);
+    expect(task.revealAtIntel1).toBeTruthy();
+    const next = clarifyTask(state, task.id);
+    // addLog is the final step of clarifyTask, so the reveal is the newest entry.
+    expect(next.log[0].text).toContain(task.revealAtIntel1!);
+  });
+
+  it("clarifying a second time surfaces the full intel-2 reveal", () => {
+    let state = initialGameState();
+    const task = state.activeTasks.find((item) => item.id === "t_reg_1")!;
+    expect(task.revealAtIntel2).toBeTruthy();
+    state = clarifyTask(state, task.id); // intel 0 -> 1
+    expect(
+      state.activeTasks.find((item) => item.id === task.id)!.intelLevel,
+    ).toBe(1);
+    state = clarifyTask(state, task.id); // intel 1 -> 2
+    expect(
+      state.activeTasks.find((item) => item.id === task.id)!.intelLevel,
+    ).toBe(2);
+    expect(state.log[0].text).toContain(task.revealAtIntel2!);
+  });
+
+  it("every reg-sense pack task carries both clarify reveals", () => {
+    const missing = regSensePackTasks
+      .filter((t) => !t.revealAtIntel1 || !t.revealAtIntel2)
+      .map((t) => t.id);
+    expect(missing).toEqual([]);
+  });
+
+  it("every intel-0 bleep pack task carries both clarify reveals", () => {
+    const missing = bleepPackTasks
+      .filter((t) => t.vague || t.regSense || t.category === "ambiguous")
+      .filter((t) => !t.revealAtIntel1 || !t.revealAtIntel2)
+      .map((t) => t.id);
+    expect(missing).toEqual([]);
   });
 
   it("deferring vague unresolved work worsens ward momentum", () => {

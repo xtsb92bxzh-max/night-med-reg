@@ -2017,6 +2017,10 @@ const extraTaskTemplates: TaskTemplate[] = [
     locationId: "respiratory",
     message:
       "Reg Sense: day handover said 'COPD, probably fine' but the ABG was never repeated.",
+    revealAtIntel1:
+      "Reviewed — the last ABG was hours ago and he's now drowsier on more oxygen; the gas was never repeated as the handover implied.",
+    revealAtIntel2:
+      "Full picture: rising CO2 with a falling conscious level — hypercapnic respiratory failure brewing. Needs a fresh gas, controlled oxygen and an NIV/senior conversation now.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "vague",
@@ -2035,6 +2039,10 @@ const extraTaskTemplates: TaskTemplate[] = [
     locationId: "elderly",
     message:
       "Reg Sense: 'pleasantly confused' is doing too much work in the handover.",
+    revealAtIntel1:
+      "Asked around — 'pleasantly confused' is masking a real change from baseline today; she's more drowsy and not eating.",
+    revealAtIntel2:
+      "Full picture: an acute delirium that needs a cause found — infection, constipation, drugs or retention. Screen properly rather than accepting the label.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "soft signal",
@@ -2053,6 +2061,10 @@ const extraTaskTemplates: TaskTemplate[] = [
     locationId: "cardiology",
     message:
       "Reg Sense: troponin labelled 'await repeat' but the ECG description sounds dynamic.",
+    revealAtIntel1:
+      "Looked at it — the first troponin was already raised and the ECG has dynamic changes. 'Await repeat' is underselling it.",
+    revealAtIntel2:
+      "Full picture: an evolving NSTEMI. Repeat the ECG now, treat as ACS and refer to cardiology — don't wait passively on the repeat troponin.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "hmm",
@@ -2071,6 +2083,10 @@ const extraTaskTemplates: TaskTemplate[] = [
     locationId: "surgical",
     message:
       "Reg Sense: 'medical optimisation' plus no obs is never a complete sentence.",
+    revealAtIntel1:
+      "Chased it — there are no recent obs at all, and the bloods show a rising bilirubin and INR. 'Optimisation' was hiding a sick patient.",
+    revealAtIntel2:
+      "Full picture: deranged liver function with coagulopathy — possible acute liver failure. Get full obs, repeat bloods and escalate; this isn't a tidy-up job.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "thin handover",
@@ -2089,6 +2105,10 @@ const extraTaskTemplates: TaskTemplate[] = [
     locationId: "mau",
     message:
       "Reg Sense: chemotherapy patient with 'viral symptoms' has a temperature trend nobody likes.",
+    revealAtIntel1:
+      "Chased the bloods — neutrophils are very low and the temperature is climbing. This is not viral.",
+    revealAtIntel2:
+      "Full picture: neutropenic sepsis. Time-critical — blood cultures and broad-spectrum antibiotics within the hour, ahead of everything else.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "vague",
