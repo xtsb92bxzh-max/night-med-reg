@@ -19,12 +19,40 @@ Open the local URL shown by Vite, usually:
 http://127.0.0.1:5173/
 ```
 
+## Controls
+
+On desktop the top bleep responds to keyboard shortcuts: `A` attend, `C`
+clarify, `E` escalate, `H` flag for handover, `D` defer, `X` ignore. While a
+patient encounter is open, press `1`–`3` to pick a choice. Your in-progress
+shift is saved automatically and resumes if you reload the page.
+
 ## Checks
 
 ```bash
-npm test
-npm run build
+npm test            # run the Vitest suite
+npm run test:watch  # watch mode
+npm run typecheck   # tsc --noEmit
+npm run lint        # ESLint
+npm run format      # Prettier write
+npm run build       # type-check + production build
 ```
+
+Continuous integration (`.github/workflows/ci.yml`) runs type-check, lint,
+format check, tests, and a production build on every push and pull request, plus
+a non-blocking Lighthouse pass on the built site.
+
+### Test layout
+
+| File                         | Covers                                                |
+| ---------------------------- | ----------------------------------------------------- |
+| `src/game.test.ts`           | Core engine: time, spawning, deterioration, teams     |
+| `src/engine.test.ts`         | RNG reproducibility, stat clamping, endings           |
+| `src/content.test.ts`        | Content schema integrity; every encounter is playable |
+| `src/App.test.tsx`           | UI render, interactions, save/resume                  |
+| `src/keyboard.test.tsx`      | Keyboard shortcuts                                    |
+| `src/a11y.test.tsx`          | Accessibility (axe) audits                            |
+| `src/persistence.test.ts`    | localStorage save/load/clear                          |
+| `src/ErrorBoundary.test.tsx` | Crash recovery screen                                 |
 
 ## Deploy With Vercel
 
