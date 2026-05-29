@@ -10,6 +10,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "mau",
     message:
       "Reg Sense: handover says 'just keep an eye on sats' but the oxygen column has quietly changed twice.",
+    revealAtIntel1:
+      "Checked the notes — O2 has gone 2L to 4L to 6L over three hours and nobody has written why. Sats are currently 93%.",
+    revealAtIntel2:
+      "Full picture: increasing work of breathing over the past hour with no documented cause, and the chest sounds wet — likely fluid overload or occult pneumonia. Needs review now.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "thin handover",
@@ -19,8 +23,6 @@ const rawRegSensePack: RegSensePackItem[] = [
     timeToDeterioration: 45,
     vague: true,
     regSense: true,
-    revealAtIntel1: "Checked the notes — O2 went from 2L to 4L to now 6L over three hours. Nobody has written why. Sats currently 93%.",
-    revealAtIntel2: "Spoke to the nurse: patient has been increasing work of breathing over the past hour. No clear cause documented. Chest sounds wet on brief assessment — likely fluid overload or occult pneumonia.",
     weight: 9,
     phases: ["early", "deep"],
     ignored: {
@@ -45,6 +47,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "elderly",
     message:
       "Reg Sense: potassium is labelled 'await repeat' but nobody seems to own the first result.",
+    revealAtIntel1:
+      "Pulled the result — K+ 6.1 from four hours ago, flagged critical by the lab, repeat still 'pending'. Patient has an AKI on background CKD.",
+    revealAtIntel2:
+      "Full picture: the ECG shows peaked T waves and a slightly wide QRS, and the patient is oliguric. A hyperkalaemic emergency — calcium gluconate and urgent treatment now, not just a repeat blood.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "soft signal",
@@ -54,8 +60,6 @@ const rawRegSensePack: RegSensePackItem[] = [
     timeToDeterioration: 20,
     vague: true,
     regSense: true,
-    revealAtIntel1: "Pulled the result — K+ 6.1 from four hours ago, flagged critical by lab. Repeat is still 'pending'. Patient has AKI on background CKD.",
-    revealAtIntel2: "ECG shows peaked T waves and a slightly wide QRS. Patient is oliguric. This is hyperkalaemic emergency — needs calcium gluconate and urgent treatment, not just a repeat blood.",
     weight: 12,
     phases: ["early", "deep", "pre_handover"],
     ignored: {
@@ -80,6 +84,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "ed_resus",
     message:
       "Reg Sense: the lactate is written as 'await repeat' but the patient is already on their second bag of fluid.",
+    revealAtIntel1:
+      "Pulled it — the first lactate was 4.5 two hours ago and never repeated, and the patient is tachycardic and oliguric despite the fluids.",
+    revealAtIntel2:
+      "Full picture: a persistent high lactate with ongoing hypoperfusion — undertreated sepsis. Needs the repeat gas now, source control and senior review, not just more fluid.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "pattern recognition",
@@ -113,6 +121,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "respiratory",
     message:
       "Reg Sense: nurse says they are 'just not happy' despite observations that do not quite trigger escalation.",
+    revealAtIntel1:
+      "Went to see — the obs sit just under the trigger, but the patient is mottled, quiet and clammy. The nurse's instinct is right.",
+    revealAtIntel2:
+      "Full picture: early compensated sepsis that NEWS hasn't caught yet. Treat the patient, not the chart — start the sepsis workup and review closely before they crash.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "unease",
@@ -146,6 +158,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "elderly",
     message:
       "Reg Sense: family keep saying 'they are not themselves' but the notes call it baseline confusion.",
+    revealAtIntel1:
+      "Asked the family — this is a clear change from two days ago, not baseline: new drowsiness and word-finding difficulty.",
+    revealAtIntel2:
+      "Full picture: an acute delirium on top of dementia, with a likely organic cause — infection, metabolic or a new stroke. Needs a delirium screen and examination now.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "soft signal",
@@ -179,6 +195,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "mau",
     message:
       "Reg Sense: patient discharged yesterday is back tonight and the clerking reads almost identical.",
+    revealAtIntel1:
+      "Compared the two clerkings — same complaint, same obs, and the original discharge had no clear safety net. Something was missed first time.",
+    revealAtIntel2:
+      "Full picture: a bounce-back that suggests the index diagnosis was wrong or incomplete. Re-clerk from scratch rather than copying forward; don't anchor on yesterday's label.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "pattern recognition",
@@ -212,6 +232,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "elderly",
     message:
       "Reg Sense: fall described as 'minor' but anticoagulation status is copied forward and uncertain.",
+    revealAtIntel1:
+      "Checked the chart — the apixaban was prescribed but it's unclear whether it was held, and the 'minor' fall was actually a head strike.",
+    revealAtIntel2:
+      "Full picture: a head injury with uncertain anticoagulation status. Confirm the last dose, examine for head injury and consider a CT head — don't let 'minor' close it down.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "thin handover",
@@ -245,6 +269,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "mau",
     message:
       "Reg Sense: chronic steroid patient has vague abdominal pain and looks better on paper than from the doorway.",
+    revealAtIntel1:
+      "Reviewed — the abdomen is only mildly tender but he looks grey and tachycardic, and the steroids are clearly masking the signs.",
+    revealAtIntel2:
+      "Full picture: steroids blunting an acute abdomen (possible perforation), plus a risk of adrenal crisis. Needs senior review, imaging and stress-dose steroids.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "unease",
@@ -278,6 +306,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "mau",
     message:
       "Reg Sense: recent chemo patient is labelled 'viral' but nobody has mentioned neutrophils yet.",
+    revealAtIntel1:
+      "Chased the bloods — neutrophils 0.3 with a temp of 38.5. This isn't a virus.",
+    revealAtIntel2:
+      "Full picture: neutropenic sepsis. Time-critical — blood cultures and broad-spectrum antibiotics within the hour, before anything else.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "pattern recognition",
@@ -311,6 +343,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "elderly",
     message:
       "Reg Sense: 'baseline dementia' appears in three notes but there is no collateral history.",
+    revealAtIntel1:
+      "Phoned the home — he was actually independent and sharp last week. The 'baseline dementia' was assumed, not established.",
+    revealAtIntel2:
+      "Full picture: an undiagnosed acute confusion mislabelled as chronic. Needs a proper delirium workup, because the real cause has never been looked for.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "thin handover",
@@ -344,6 +380,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "cardiology",
     message:
       "Reg Sense: ECG is described as 'probably fine' but nobody sounds completely convinced.",
+    revealAtIntel1:
+      "Looked at the ECG myself — there's subtle ST depression in the inferior leads that had been dismissed. Not 'probably fine'.",
+    revealAtIntel2:
+      "Full picture: ischaemic ECG changes in a patient with the right story. Repeat the ECG, send a troponin and treat as ACS until proven otherwise.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "vague",
@@ -377,6 +417,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "surgical",
     message:
       "Reg Sense: scan request was rejected as low yield, but the patient trajectory has not read the rejection email.",
+    revealAtIntel1:
+      "Reviewed — the patient has clearly worsened since the request was turned down; the original indication is now much stronger.",
+    revealAtIntel2:
+      "Full picture: a rejected scan that is now genuinely indicated by the deterioration. Re-discuss with radiology with the updated picture and escalate if needed.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "unease",
@@ -410,6 +454,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "respiratory",
     message:
       "Reg Sense: end-of-life plan says 'for comfort' but the escalation box is blank.",
+    revealAtIntel1:
+      "Checked the notes — 'for comfort' is written but there's no DNACPR, no ceiling of care, and the family haven't been spoken to.",
+    revealAtIntel2:
+      "Full picture: an incomplete end-of-life plan that will cause chaos if she deteriorates. Clarify the ceiling of care and resus status now, and document it clearly for the day team.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "thin handover",
@@ -443,6 +491,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "elderly",
     message:
       "Reg Sense: Parkinson's meds are marked 'not given' and the patient is now oddly quiet.",
+    revealAtIntel1:
+      "Looked into it — three doses missed because they weren't available, and he's now rigid and barely moving.",
+    revealAtIntel2:
+      "Full picture: missed Parkinson's medication causing acute akinesia, with aspiration risk and a neuroleptic-malignant-like picture. Get the doses given now via the right route — never just omit them.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "soft signal",
@@ -476,6 +528,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "elderly",
     message:
       "Reg Sense: frailty patient has not triggered NEWS, but every observation is a little worse than the last one.",
+    revealAtIntel1:
+      "Trended the obs — each set is slightly worse: creeping HR, falling sats, narrowing BP. The trajectory is clearly down even if no single value triggers.",
+    revealAtIntel2:
+      "Full picture: a slow compensated decline that NEWS will catch only when it's late. Review now, find the cause and set clear parameters rather than waiting for the trigger.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "pattern recognition",
@@ -509,6 +565,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "respiratory",
     message:
       "Reg Sense: oxygen requirement is creeping up while everyone talks about 'just giving another neb'.",
+    revealAtIntel1:
+      "Reviewed — the FiO2 has crept up steadily and she's now tiring, with the respiratory rate falling from exhaustion. Nebs alone aren't holding her.",
+    revealAtIntel2:
+      "Full picture: life-threatening asthma tiring towards respiratory arrest. Needs a gas, senior and critical-care input now — not another neb.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "pattern recognition",
@@ -542,6 +602,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "cardiology",
     message:
       "Reg Sense: repeat troponin is pending, but the pain story changed while nobody was looking.",
+    revealAtIntel1:
+      "Asked the patient — the pain came back, now radiating to the jaw, and the first troponin was already mildly raised.",
+    revealAtIntel2:
+      "Full picture: an evolving ACS with recurrent pain. Don't wait passively for the repeat — get a fresh ECG now, treat as ACS and escalate to cardiology.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "soft signal",
@@ -575,6 +639,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "mau",
     message:
       "Reg Sense: sodium is low enough to matter, but the plan says only 'repeat U&E in morning'.",
+    revealAtIntel1:
+      "Checked — Na 119 and dropping over two sets, with the patient now mildly confused. 'Repeat in the morning' is too slow.",
+    revealAtIntel2:
+      "Full picture: symptomatic and falling hyponatraemia that needs active management tonight — a fluid assessment, careful correction and a clear monitoring plan.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "thin handover",
@@ -608,6 +676,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "mau",
     message:
       "Reg Sense: blood pressure has 'improved' but only after the cuff moved arms and the patient stopped talking.",
+    revealAtIntel1:
+      "Re-checked properly — the 'improved' BP was an artefact; a manual reading is 78 systolic and he's peripherally shut down.",
+    revealAtIntel2:
+      "Full picture: genuine shock masked by a spurious reading. Treat the patient — fluids, large-bore access, find the source and escalate urgently.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "unease",
@@ -641,6 +713,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "ed_resus",
     message:
       "Reg Sense: glucose is high, ketones are tucked in the triage notes, and nobody has said DKA aloud.",
+    revealAtIntel1:
+      "Pulled it together — glucose 26, ketones 5.1, and a gas showing a metabolic acidosis. It's DKA, just never named.",
+    revealAtIntel2:
+      "Full picture: established DKA hiding in plain sight. Start the DKA protocol with fixed-rate insulin and fluids now, and monitor potassium closely.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "pattern recognition",
@@ -674,6 +750,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "icu",
     message:
       "Reg Sense: everyone says 'not for ICU yet' but nobody has defined what 'yet' means.",
+    revealAtIntel1:
+      "Reviewed — the patient is on increasing support and already meets several ICU referral criteria; 'not yet' has quietly become 'overdue'.",
+    revealAtIntel2:
+      "Full picture: a deteriorating patient who needs an ICU conversation now, with clear escalation parameters documented — before the crash makes the decision for you.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "vague",
@@ -707,6 +787,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "respiratory",
     message:
       "Reg Sense: COPD patient is less agitated now, but the oxygen has gone up and no gas has been repeated.",
+    revealAtIntel1:
+      "Did a gas — the 'calmer' patient is actually drowsy with CO2 retention, pCO2 9.5 and a falling pH. The quiet is ominous.",
+    revealAtIntel2:
+      "Full picture: worsening hypercapnic respiratory failure with a depressed conscious level. Needs controlled oxygen, NIV and senior/ICU input now — the calm is decompensation.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "pattern recognition",
@@ -740,6 +824,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "surgical",
     message:
       "Reg Sense: antibiotics are 'due after cultures' but nobody knows whether cultures have actually been sent.",
+    revealAtIntel1:
+      "Checked — the cultures were never sent and the septic patient has had no antibiotics for hours, each team assuming the other had done it.",
+    revealAtIntel2:
+      "Full picture: a septic patient with delayed antibiotics from a handover gap. Take cultures and give antibiotics now; don't let 'after cultures' delay treatment any further.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "soft signal",
@@ -773,6 +861,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "elderly",
     message:
       "Reg Sense: 'mechanical fall' is written neatly, but the patient cannot explain why they were on the floor.",
+    revealAtIntel1:
+      "Took a history — there was no trip, and she remembers feeling lightheaded with palpitations beforehand. This wasn't mechanical.",
+    revealAtIntel2:
+      "Full picture: likely syncope, possibly cardiac, mislabelled as a mechanical fall. Needs an ECG, lying/standing BP and a cardiac workup rather than just a falls form.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "unease",
@@ -806,6 +898,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "cardiology",
     message:
       "Reg Sense: AF is on the monitor, but the problem list still says 'known sinus tachycardia'.",
+    revealAtIntel1:
+      "Checked old ECGs — this is new AF, not the documented sinus tachycardia. Rate is 130 and it's been there for hours.",
+    revealAtIntel2:
+      "Full picture: new fast AF that's gone unrecognised. Needs rate control, an anticoagulation assessment and a look for a precipitant — and the problem list corrected.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "soft signal",
@@ -839,6 +935,10 @@ const rawRegSensePack: RegSensePackItem[] = [
     locationId: "mau",
     message:
       "Reg Sense: the ward has gone suspiciously quiet just before handover, except for one bed space everyone avoids mentioning.",
+    revealAtIntel1:
+      "Went to the bed everyone was avoiding — the patient is quietly unwell, obs overdue, and nobody had handed them over.",
+    revealAtIntel2:
+      "Full picture: an unstable patient about to fall through the handover gap. Review and stabilise now, and make sure they're explicitly handed over rather than lost in the quiet.",
     sender: "Your reg sense",
     source: "reg_sense",
     claimedUrgency: "vague",
