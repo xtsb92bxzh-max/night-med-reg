@@ -1,7 +1,47 @@
 import { useEffect, useMemo, useState } from "react";
-import { encounters, locations, taskTemplates, SHIFT_LENGTH } from "./content";
-import { acceptTreat, activeEncounterView, brewCoffee, chooseEncounterOption, clarifyTask, deferPager, delegationDuration, delegatePager, dismissDatixAlert, dismissTreat, endingRank, escalateEncounter, escalateTask, findSnack, formatClock, handoverDebrief, handoverMemoryScore, ignorePager, initialGameState, isDelegationAppropriate, isTeamMemberAvailable, liveTasks, markEncounterForHandover, markTaskForHandover, moveTo, orderedEncounterChoices, randomRunSeed, respondToPager, takeBreak, useResource } from "./game";
-import type { ActiveTask, Consequence, GameState, Location, LocationId, ResourceItemId, TeamMemberId } from "./types";
+import { encounters, locations, SHIFT_LENGTH } from "./content";
+import {
+  acceptTreat,
+  activeEncounterView,
+  brewCoffee,
+  chooseEncounterOption,
+  clarifyTask,
+  deferPager,
+  delegationDuration,
+  delegatePager,
+  dismissDatixAlert,
+  dismissTreat,
+  endingRank,
+  escalateEncounter,
+  escalateTask,
+  findSnack,
+  formatClock,
+  handoverDebrief,
+  handoverMemoryScore,
+  ignorePager,
+  initialGameState,
+  isDelegationAppropriate,
+  isTeamMemberAvailable,
+  liveTasks,
+  markEncounterForHandover,
+  markTaskForHandover,
+  moveTo,
+  orderedEncounterChoices,
+  randomRunSeed,
+  respondToPager,
+  takeBreak,
+  consumeResource,
+} from "./game";
+import type {
+  ActiveTask,
+  Consequence,
+  GameState,
+  Location,
+  LocationId,
+  ResourceItemId,
+  TeamMemberId,
+} from "./types";
+import { clearGame, loadGame, saveGame } from "./persistence";
 
 const statRows: [string, keyof GameState][] = [
   ["Stamina", "stamina"],
@@ -21,12 +61,17 @@ function formatDuration(minutes: number): string {
 }
 
 function DeltaList({ consequence }: { consequence: Consequence }) {
-  const entries = Object.entries(consequence).filter(([, value]) => value !== 0 && value !== undefined);
+  const entries = Object.entries(consequence).filter(
+    ([, value]) => value !== 0 && value !== undefined,
+  );
   if (!entries.length) return null;
   return (
     <div className="deltas" aria-label="Consequences">
       {entries.map(([key, value]) => (
-        <span key={key} className={Number(value) >= 0 ? "positive" : "negative"}>
+        <span
+          key={key}
+          className={Number(value) >= 0 ? "positive" : "negative"}
+        >
           {key.replace(/([A-Z])/g, " $1")}: {Number(value) > 0 ? "+" : ""}
           {value}
         </span>
@@ -51,15 +96,33 @@ const cutawayRooms: Record<LocationId, CutawayRoom> = {
   elderly: { floor: 4, col: 7, span: 3, label: "COTE", group: "ward" },
   surgical: { floor: 4, col: 10, span: 3, label: "Surg", group: "ward" },
   icu: { floor: 3, col: 1, span: 4, label: "ICU", group: "critical" },
-  radiology: { floor: 3, col: 8, span: 4, label: "Radiology / CT", group: "critical" },
+  radiology: {
+    floor: 3,
+    col: 8,
+    span: 4,
+    label: "Radiology / CT",
+    group: "critical",
+  },
   mau: { floor: 2, col: 1, span: 6, label: "MAU", group: "flow" },
   pharmacy: { floor: 2, col: 9, span: 3, label: "Pharmacy", group: "support" },
   ed_resus: { floor: 1, col: 1, span: 4, label: "ED Resus", group: "acute" },
-  corridor: { floor: 1, col: 5, span: 4, label: "Main Corridor", group: "core" },
+  corridor: {
+    floor: 1,
+    col: 5,
+    span: 4,
+    label: "Main Corridor",
+    group: "core",
+  },
   lifts: { floor: 1, col: 9, span: 3, label: "Lift Lobby", group: "core" },
 };
 
-function StatsPanel({ state, onRestart }: { state: GameState; onRestart: () => void }) {
+function StatsPanel({
+  state,
+  onRestart,
+}: {
+  state: GameState;
+  onRestart: () => void;
+}) {
   return (
     <section className="compact-status" aria-labelledby="stats-title">
       <div className="brand-block">
@@ -76,7 +139,14 @@ function StatsPanel({ state, onRestart }: { state: GameState; onRestart: () => v
           return (
             <div className="meter-row compact" key={label}>
               <span>{label}</span>
-              <div className="meter" aria-label={`${label} ${value}`}>
+              <div
+                className="meter"
+                role="meter"
+                aria-label={`${label} ${value}`}
+                aria-valuenow={value}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
                 <b style={{ width: `${value}%` }} />
               </div>
               <strong>{value}</strong>
@@ -85,41 +155,92 @@ function StatsPanel({ state, onRestart }: { state: GameState; onRestart: () => v
         })}
       </div>
       <div className="compact-scores">
-        <span>Score <strong>{state.score}</strong></span>
-        <span>Backlog <strong>{state.pagerBacklog}</strong></span>
-        <span>Safety <strong>{state.patientSafety}</strong></span>
-        <span>Pressure <strong>{state.hospitalPressure}</strong></span>
-        <span>Oversight <strong>{state.oversight}</strong></span>
-        <span>Bird <strong>{state.birdStatus}</strong></span>
-        <button className="ghost" onClick={onRestart}>Restart</button>
+        <span>
+          Score <strong>{state.score}</strong>
+        </span>
+        <span>
+          Backlog <strong>{state.pagerBacklog}</strong>
+        </span>
+        <span>
+          Safety <strong>{state.patientSafety}</strong>
+        </span>
+        <span>
+          Pressure <strong>{state.hospitalPressure}</strong>
+        </span>
+        <span>
+          Oversight <strong>{state.oversight}</strong>
+        </span>
+        <span>
+          Bird <strong>{state.birdStatus}</strong>
+        </span>
+        <button className="ghost" onClick={onRestart}>
+          Restart
+        </button>
       </div>
     </section>
   );
 }
 
 function locationTaskSummary(state: GameState, locationId: LocationId) {
-  const tasks = liveTasks(state).filter((task) => task.locationId === locationId);
+  const tasks = liveTasks(state).filter(
+    (task) => task.locationId === locationId,
+  );
   return {
     total: tasks.length,
-    urgent: tasks.some((task) => ["critical", "high"].includes(task.trueUrgency)),
+    urgent: tasks.some((task) =>
+      ["critical", "high"].includes(task.trueUrgency),
+    ),
     deteriorated: tasks.some((task) => task.status === "deteriorated"),
   };
 }
 
-function LocationStatusBadges({ state, location }: { state: GameState; location: Location }) {
+function LocationStatusBadges({
+  state,
+  location,
+}: {
+  state: GameState;
+  location: Location;
+}) {
   const taskSummary = locationTaskSummary(state, location.id);
-  const staleMinutes = Math.max(0, state.minute - state.locationLastVisited[location.id]);
+  const staleMinutes = Math.max(
+    0,
+    state.minute - state.locationLastVisited[location.id],
+  );
   const highAcuity = state.wardAcuity[location.id].level > 60;
   return (
     <span className="node-badges" aria-hidden="true">
-      {taskSummary.total > 0 && <b className={taskSummary.urgent || taskSummary.deteriorated ? "task-badge urgent" : "task-badge"}>{taskSummary.total}</b>}
+      {taskSummary.total > 0 && (
+        <b
+          className={
+            taskSummary.urgent || taskSummary.deteriorated
+              ? "task-badge urgent"
+              : "task-badge"
+          }
+        >
+          {taskSummary.total}
+        </b>
+      )}
       {highAcuity && <b className="heat-badge">!</b>}
       {staleMinutes > 28 && <b className="stale-badge">?</b>}
     </span>
   );
 }
 
-function CutawayRoomButton({ state, location, lockedByEncounter, isAnimating, animatingTo, onTravel }: { state: GameState; location: Location; lockedByEncounter: boolean; isAnimating: boolean; animatingTo?: LocationId; onTravel: (locationId: LocationId) => void }) {
+function CutawayRoomButton({
+  state,
+  location,
+  lockedByEncounter,
+  isAnimating,
+  animatingTo,
+  onTravel,
+}: {
+  state: GameState;
+  location: Location;
+  lockedByEncounter: boolean;
+  isAnimating: boolean;
+  animatingTo?: LocationId;
+  onTravel: (locationId: LocationId) => void;
+}) {
   const here = locations.find((item) => item.id === state.locationId)!;
   const available = here.links.includes(location.id);
   const current = location.id === here.id;
@@ -137,12 +258,16 @@ function CutawayRoomButton({ state, location, lockedByEncounter, isAnimating, an
     taskSummary.urgent || taskSummary.deteriorated ? "urgent" : "",
     stale ? "stale" : "",
     hotAcuity ? "hot" : "",
-  ].filter(Boolean).join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <button
       className={className}
       style={{ gridColumn: `${room.col} / span ${room.span}` }}
-      disabled={!available || current || state.ended || lockedByEncounter || isAnimating}
+      disabled={
+        !available || current || state.ended || lockedByEncounter || isAnimating
+      }
       onClick={() => onTravel(location.id)}
       title={`${location.name}: ${location.quirk}`}
       aria-label={`${location.name}${current ? ", current location" : ""}${taskSummary.total ? `, ${taskSummary.total} live task${taskSummary.total === 1 ? "" : "s"}` : ""}`}
@@ -157,35 +282,54 @@ function CutawayRoomButton({ state, location, lockedByEncounter, isAnimating, an
 
 function RegistrarMarker({ moving = false }: { moving?: boolean }) {
   return (
-    <div className={moving ? "registrar-marker moving" : "registrar-marker"} aria-hidden="true">
+    <div
+      className={moving ? "registrar-marker moving" : "registrar-marker"}
+      aria-hidden="true"
+    >
       <span className="registrar-dot" />
       <strong>Med Reg</strong>
     </div>
   );
 }
 
-function HospitalSchematicMap({ state, lockedByEncounter, animatingTo, onTravel }: { state: GameState; lockedByEncounter: boolean; animatingTo?: LocationId; onTravel: (locationId: LocationId) => void }) {
+function HospitalSchematicMap({
+  state,
+  lockedByEncounter,
+  animatingTo,
+  onTravel,
+}: {
+  state: GameState;
+  lockedByEncounter: boolean;
+  animatingTo?: LocationId;
+  onTravel: (locationId: LocationId) => void;
+}) {
   const isAnimating = Boolean(animatingTo);
   const floors = [5, 4, 3, 2, 1];
   return (
     <div className="cutaway-wrap" aria-label="Hospital cutaway map">
-      <div className="building-label" aria-hidden="true">Fictional NHS District General Hospital</div>
+      <div className="building-label" aria-hidden="true">
+        Fictional NHS District General Hospital
+      </div>
       {floors.map((floor) => (
         <div className="cutaway-floor" key={floor}>
           <div className="floor-label">F{floor}</div>
           <div className="floor-rooms">
-            {locations.filter((location) => cutawayRooms[location.id].floor === floor).map((location) => (
-              <CutawayRoomButton
-                key={location.id}
-                state={state}
-                location={location}
-                lockedByEncounter={lockedByEncounter}
-                isAnimating={isAnimating}
-                animatingTo={animatingTo}
-                onTravel={onTravel}
-              />
-            ))}
-            <div className="lift-core" aria-hidden="true">Lift / stairs</div>
+            {locations
+              .filter((location) => cutawayRooms[location.id].floor === floor)
+              .map((location) => (
+                <CutawayRoomButton
+                  key={location.id}
+                  state={state}
+                  location={location}
+                  lockedByEncounter={lockedByEncounter}
+                  isAnimating={isAnimating}
+                  animatingTo={animatingTo}
+                  onTravel={onTravel}
+                />
+              ))}
+            <div className="lift-core" aria-hidden="true">
+              Lift / stairs
+            </div>
           </div>
         </div>
       ))}
@@ -193,11 +337,19 @@ function HospitalSchematicMap({ state, lockedByEncounter, animatingTo, onTravel 
   );
 }
 
-function MapPanel({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
+function MapPanel({
+  state,
+  setState,
+}: {
+  state: GameState;
+  setState: (state: GameState) => void;
+}) {
   const [animatingTo, setAnimatingTo] = useState<LocationId | undefined>();
   const here = locations.find((location) => location.id === state.locationId)!;
   const lockedByEncounter = Boolean(state.activeEncounterId);
-  const staleCount = locations.filter((location) => state.minute - state.locationLastVisited[location.id] > 28).length;
+  const staleCount = locations.filter(
+    (location) => state.minute - state.locationLastVisited[location.id] > 28,
+  ).length;
   const handleTravel = (locationId: LocationId) => {
     if (animatingTo || lockedByEncounter || state.ended) return;
     setAnimatingTo(locationId);
@@ -212,39 +364,97 @@ function MapPanel({ state, setState }: { state: GameState; setState: (state: Gam
         <h2 id="map-title">Hospital Map</h2>
         <span className={`risk ${here.risk}`}>{here.risk}</span>
       </div>
-      <HospitalSchematicMap state={state} lockedByEncounter={lockedByEncounter} animatingTo={animatingTo} onTravel={handleTravel} />
+      <HospitalSchematicMap
+        state={state}
+        lockedByEncounter={lockedByEncounter}
+        animatingTo={animatingTo}
+        onTravel={handleTravel}
+      />
       <div className="location-card">
         <h3>{here.name}</h3>
         <p>{here.flavour}</p>
       </div>
       {(() => {
-        const treat = state.activeTasks.find((t) => t.source === "treat" && t.locationId === state.locationId);
+        const treat = state.activeTasks.find(
+          (t) => t.source === "treat" && t.locationId === state.locationId,
+        );
         return treat ? (
           <div className="treat-offer">
             <strong>{treat.message}</strong>
             <p>{treat.sender}</p>
             <DeltaList consequence={treat.handledWell} />
             <div className="treat-offer-actions">
-              <button className="primary" onClick={() => setState(acceptTreat(state, treat.id))}>Accept</button>
-              <button className="ghost" onClick={() => setState(dismissTreat(state, treat.id))}>Decline</button>
+              <button
+                className="primary"
+                onClick={() => setState(acceptTreat(state, treat.id))}
+              >
+                Accept
+              </button>
+              <button
+                className="ghost"
+                onClick={() => setState(dismissTreat(state, treat.id))}
+              >
+                Decline
+              </button>
             </div>
           </div>
         ) : null;
       })()}
-      {staleCount > 0 && <p className="oversight-warning">Oversight fading: {staleCount} area{staleCount === 1 ? "" : "s"} not recently reviewed.</p>}
-      {lockedByEncounter && <p className="map-lock">Resolve the active challenge before moving on.</p>}
-      {state.locationId === "mess" && state.activeTasks.length > 0 && <p className="map-lock">Hospital pressure will rise if you rest with unresolved live tasks.</p>}
-      {state.locationId === "mess" && staleCount > 0 && <p className="oversight-warning">A mess break will cost oversight while other areas go unseen.</p>}
+      {staleCount > 0 && (
+        <p className="oversight-warning">
+          Oversight fading: {staleCount} area{staleCount === 1 ? "" : "s"} not
+          recently reviewed.
+        </p>
+      )}
+      {lockedByEncounter && (
+        <p className="map-lock">
+          Resolve the active challenge before moving on.
+        </p>
+      )}
+      {state.locationId === "mess" && state.activeTasks.length > 0 && (
+        <p className="map-lock">
+          Hospital pressure will rise if you rest with unresolved live tasks.
+        </p>
+      )}
+      {state.locationId === "mess" && staleCount > 0 && (
+        <p className="oversight-warning">
+          A mess break will cost oversight while other areas go unseen.
+        </p>
+      )}
       {state.locationId === "mess" && (
         <div className="recovery-actions">
-          <button className="primary wide" disabled={state.ended} onClick={() => setState(takeBreak(state))}>Take a nine-minute break</button>
-          <button disabled={state.ended} onClick={() => setState(brewCoffee(state))} title="+caffeine and focus, costs 3m">Make coffee</button>
-          <button disabled={state.ended} onClick={() => setState(findSnack(state))} title="+stamina and focus, costs 4m">Find snack</button>
+          <button
+            className="primary wide"
+            disabled={state.ended}
+            onClick={() => setState(takeBreak(state))}
+          >
+            Take a nine-minute break
+          </button>
+          <button
+            disabled={state.ended}
+            onClick={() => setState(brewCoffee(state))}
+            title="+caffeine and focus, costs 3m"
+          >
+            Make coffee
+          </button>
+          <button
+            disabled={state.ended}
+            onClick={() => setState(findSnack(state))}
+            title="+stamina and focus, costs 4m"
+          >
+            Find snack
+          </button>
         </div>
       )}
       {["corridor", "lifts", "pharmacy"].includes(state.locationId) && (
         <div className="recovery-actions">
-          <button disabled={state.ended} onClick={() => setState(findSnack(state))} title="+stamina, small focus boost, costs 4m">Try vending/snack run</button>
+          <button
+            disabled={state.ended}
+            onClick={() => setState(findSnack(state))}
+            title="+stamina, small focus boost, costs 4m"
+          >
+            Try vending/snack run
+          </button>
         </div>
       )}
     </section>
@@ -259,15 +469,41 @@ function taskClass(task: ActiveTask): string {
     task.regSense ? "reg-sense-task" : "",
     task.status === "deteriorated" ? "deteriorated" : "",
     task.markedForHandover ? "handover-marked" : "",
-  ].filter(Boolean).join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
-const delegateOrder: TeamMemberId[] = ["fy1", "trusted_fy2", "locum_no_login", "bed_manager"];
+const delegateOrder: TeamMemberId[] = [
+  "fy1",
+  "trusted_fy2",
+  "locum_no_login",
+  "bed_manager",
+];
 
-function DelegationControls({ state, task, setState, expanded, onToggle }: { state: GameState; task: ActiveTask; setState: (state: GameState) => void; expanded: boolean; onToggle: () => void }) {
+function DelegationControls({
+  state,
+  task,
+  setState,
+  expanded,
+  onToggle,
+}: {
+  state: GameState;
+  task: ActiveTask;
+  setState: (state: GameState) => void;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   return (
     <>
-      <button className="ghost" onClick={onToggle} aria-expanded={expanded} title="Ask a team member to handle this bleep. Good fits clear the task; risky fits can create harm or delay.">{expanded ? "Close delegation" : "Delegate"}</button>
+      <button
+        className="ghost"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        title="Ask a team member to handle this bleep. Good fits clear the task; risky fits can create harm or delay."
+      >
+        {expanded ? "Close delegation" : "Delegate"}
+      </button>
       {expanded && (
         <div className="delegate-grid" aria-label={`Delegate ${task.message}`}>
           {delegateOrder.map((memberId) => {
@@ -281,10 +517,16 @@ function DelegationControls({ state, task, setState, expanded, onToggle }: { sta
                 className={appropriate ? "delegate-good" : "delegate-risk"}
                 disabled={!available}
                 title={`${member.name}: ${appropriate ? "appropriate delegation clears pressure and builds trust" : "risky delegation may harm safety or bounce back"} · ${duration}m`}
-                onClick={() => setState(delegatePager(state, task.id, memberId))}
+                onClick={() =>
+                  setState(delegatePager(state, task.id, memberId))
+                }
               >
                 {member.name}
-                <small>{available ? `${duration}m ${appropriate ? "fit" : "risk"}` : `busy ${member.busyUntil - state.minute}m`}</small>
+                <small>
+                  {available
+                    ? `${duration}m ${appropriate ? "fit" : "risk"}`
+                    : `busy ${member.busyUntil - state.minute}m`}
+                </small>
               </button>
             );
           })}
@@ -294,77 +536,188 @@ function DelegationControls({ state, task, setState, expanded, onToggle }: { sta
   );
 }
 
-function TaskPanel({ state, setState, limit, compact = false }: { state: GameState; setState: (state: GameState) => void; limit?: number; compact?: boolean }) {
+function TaskPanel({
+  state,
+  setState,
+  limit,
+  compact = false,
+}: {
+  state: GameState;
+  setState: (state: GameState) => void;
+  limit?: number;
+  compact?: boolean;
+}) {
   const tasks = liveTasks(state);
-  const visibleTasks = typeof limit === "number" ? tasks.slice(0, limit) : tasks;
+  const visibleTasks =
+    typeof limit === "number" ? tasks.slice(0, limit) : tasks;
   const regSenseTasks = tasks.filter((task) => task.regSense);
-  const [expandedDelegateTaskId, setExpandedDelegateTaskId] = useState<string | undefined>();
+  const [expandedDelegateTaskId, setExpandedDelegateTaskId] = useState<
+    string | undefined
+  >();
   return (
-    <section className={compact ? "panel pager-panel compact-panel" : "panel pager-panel"} aria-labelledby="pager-title">
+    <section
+      className={
+        compact ? "panel pager-panel compact-panel" : "panel pager-panel"
+      }
+      aria-labelledby="pager-title"
+    >
       <div className="panel-heading">
         <h2 id="pager-title">{compact ? "Priority Bleeps" : "Bleep Stack"}</h2>
-        <span>{tasks.length} active{limit && tasks.length > visibleTasks.length ? ` · top ${visibleTasks.length}` : ""}</span>
+        <span>
+          {tasks.length} active
+          {limit && tasks.length > visibleTasks.length
+            ? ` · top ${visibleTasks.length}`
+            : ""}
+        </span>
       </div>
+      <p className="kbd-hint muted">
+        Keys (top bleep): A attend · C clarify · E escalate · H handover · D
+        defer · X ignore. In an encounter, press 1–3 to choose.
+      </p>
       {regSenseTasks.length > 0 && !compact && (
         <div className="reg-sense-strip">
           <strong>Reg Sense</strong>
-          <span>{regSenseTasks.length} vague concern{regSenseTasks.length === 1 ? "" : "s"} worth a look before they become bleeps.</span>
+          <span>
+            {regSenseTasks.length} vague concern
+            {regSenseTasks.length === 1 ? "" : "s"} worth a look before they
+            become bleeps.
+          </span>
         </div>
       )}
       <div className="pager-list">
-        {tasks.length === 0 && <p className="muted">A rare silence. Deeply suspicious.</p>}
-        {visibleTasks.map((task) => (
+        {tasks.length === 0 && (
+          <p className="muted">A rare silence. Deeply suspicious.</p>
+        )}
+        {visibleTasks.map((task) =>
           task.source === "treat" ? (
-            <article className={compact ? `${taskClass(task)} compact` : taskClass(task)} key={task.id}>
+            <article
+              className={
+                compact ? `${taskClass(task)} compact` : taskClass(task)
+              }
+              key={task.id}
+            >
               <div>
                 <strong>{task.message}</strong>
                 {!compact && <p className="muted">{task.sender}</p>}
                 <DeltaList consequence={task.handledWell} />
               </div>
               <div className="pager-actions">
-                <button className="primary" onClick={() => setState(acceptTreat(state, task.id))}>Accept</button>
-                <button className="ghost" onClick={() => setState(dismissTreat(state, task.id))}>Decline</button>
+                <button
+                  className="primary"
+                  onClick={() => setState(acceptTreat(state, task.id))}
+                >
+                  Accept
+                </button>
+                <button
+                  className="ghost"
+                  onClick={() => setState(dismissTreat(state, task.id))}
+                >
+                  Decline
+                </button>
               </div>
             </article>
           ) : (
-            <article className={compact ? `${taskClass(task)} compact` : taskClass(task)} key={task.id}>
+            <article
+              className={
+                compact ? `${taskClass(task)} compact` : taskClass(task)
+              }
+              key={task.id}
+            >
               <div>
                 <strong>{task.message}</strong>
-                {!compact && <p>{task.sender} · {task.source.replace("_", " ")} · claimed {task.claimedUrgency} · true risk {task.trueUrgency}</p>}
+                {!compact && (
+                  <p>
+                    {task.sender} · {task.source.replace("_", " ")} · claimed{" "}
+                    {task.claimedUrgency} · true risk {task.trueUrgency}
+                  </p>
+                )}
                 <small>
-                  {task.status === "deteriorated" ? "overdue / Datix risk logged" : task.status} · intel {task.intelLevel}/2{task.markedForHandover ? " · handover" : ""} · received {state.minute - task.createdAt}m ago · {locations.find((location) => location.id === task.locationId)?.name} · {Math.max(0, task.dueAt - state.minute)}m to deterioration
+                  {task.status === "deteriorated"
+                    ? "overdue / Datix risk logged"
+                    : task.status}{" "}
+                  · intel {task.intelLevel}/2
+                  {task.markedForHandover ? " · handover" : ""} · received{" "}
+                  {state.minute - task.createdAt}m ago ·{" "}
+                  {
+                    locations.find(
+                      (location) => location.id === task.locationId,
+                    )?.name
+                  }{" "}
+                  · {Math.max(0, task.dueAt - state.minute)}m to deterioration
                 </small>
               </div>
               <div className="pager-actions">
-                <button onClick={() => setState(respondToPager(state, task.id))}>Attend</button>
-                <button onClick={() => setState(clarifyTask(state, task.id))} disabled={task.intelLevel >= 2}>Clarify</button>
-                <button onClick={() => setState(escalateTask(state, task.id))}>Escalate</button>
-                <button onClick={() => setState(markTaskForHandover(state, task.id))} disabled={task.markedForHandover} title="Flag this as something the day team should explicitly know about at 09:00">Handover</button>
-                <button onClick={() => setState(deferPager(state, task.id))}>Defer</button>
-                <button className="danger" onClick={() => setState(ignorePager(state, task.id))}>Ignore</button>
+                <button
+                  onClick={() => setState(respondToPager(state, task.id))}
+                >
+                  Attend
+                </button>
+                <button
+                  onClick={() => setState(clarifyTask(state, task.id))}
+                  disabled={task.intelLevel >= 2}
+                >
+                  Clarify
+                </button>
+                <button onClick={() => setState(escalateTask(state, task.id))}>
+                  Escalate
+                </button>
+                <button
+                  onClick={() => setState(markTaskForHandover(state, task.id))}
+                  disabled={task.markedForHandover}
+                  title="Flag this as something the day team should explicitly know about at 09:00"
+                >
+                  Handover
+                </button>
+                <button onClick={() => setState(deferPager(state, task.id))}>
+                  Defer
+                </button>
+                <button
+                  className="danger"
+                  onClick={() => setState(ignorePager(state, task.id))}
+                >
+                  Ignore
+                </button>
                 <DelegationControls
                   state={state}
                   task={task}
                   setState={setState}
                   expanded={expandedDelegateTaskId === task.id}
-                  onToggle={() => setExpandedDelegateTaskId(expandedDelegateTaskId === task.id ? undefined : task.id)}
+                  onToggle={() =>
+                    setExpandedDelegateTaskId(
+                      expandedDelegateTaskId === task.id ? undefined : task.id,
+                    )
+                  }
                 />
               </div>
             </article>
-          )
-        ))}
+          ),
+        )}
       </div>
     </section>
   );
 }
 
-function EncounterPanel({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
-  const encounter = encounters.find((item) => item.id === state.activeEncounterId);
+function EncounterPanel({
+  state,
+  setState,
+}: {
+  state: GameState;
+  setState: (state: GameState) => void;
+}) {
+  const encounter = encounters.find(
+    (item) => item.id === state.activeEncounterId,
+  );
   if (!encounter) {
     return (
-      <section className="panel encounter-panel" aria-labelledby="encounter-title">
+      <section
+        className="panel encounter-panel"
+        aria-labelledby="encounter-title"
+      >
         <h2 id="encounter-title">Active Encounter</h2>
-        <p className="muted">No patient currently in front of you. This condition is usually transient.</p>
+        <p className="muted">
+          No patient currently in front of you. This condition is usually
+          transient.
+        </p>
       </section>
     );
   }
@@ -372,24 +725,51 @@ function EncounterPanel({ state, setState }: { state: GameState; setState: (stat
   const display = step ?? encounter;
   const choices = orderedEncounterChoices(state, encounter);
   return (
-    <section className="panel encounter-panel active" aria-labelledby="encounter-title">
+    <section
+      className="panel encounter-panel active"
+      aria-labelledby="encounter-title"
+    >
       <div className="panel-heading">
         <h2 id="encounter-title">{encounter.title}</h2>
         <div className="encounter-actions">
-          <button className="ghost" onClick={() => setState(escalateEncounter(state))}>Escalate</button>
-          <button className="ghost" onClick={() => setState(markEncounterForHandover(state))} title="Flag this active patient problem for the morning handover">Handover</button>
+          <button
+            className="ghost"
+            onClick={() => setState(escalateEncounter(state))}
+          >
+            Escalate
+          </button>
+          <button
+            className="ghost"
+            onClick={() => setState(markEncounterForHandover(state))}
+            title="Flag this active patient problem for the morning handover"
+          >
+            Handover
+          </button>
         </div>
       </div>
       {step?.title && <h3>{step.title}</h3>}
       <p className="vignette">{display.vignette}</p>
       <div className="clinical-grid">
-        <div><strong>Observations</strong><p>{display.observations}</p></div>
-        <div><strong>Examination</strong><p>{display.examination}</p></div>
-        <div><strong>Investigations</strong><p>{display.investigations.join(" · ")}</p></div>
+        <div>
+          <strong>Observations</strong>
+          <p>{display.observations}</p>
+        </div>
+        <div>
+          <strong>Examination</strong>
+          <p>{display.examination}</p>
+        </div>
+        <div>
+          <strong>Investigations</strong>
+          <p>{display.investigations.join(" · ")}</p>
+        </div>
       </div>
       <div className="choices">
         {choices.map((choice) => (
-          <button key={choice.id} className={choice.unsafe ? "choice unsafe" : "choice"} onClick={() => setState(chooseEncounterOption(state, choice.id))}>
+          <button
+            key={choice.id}
+            className={choice.unsafe ? "choice unsafe" : "choice"}
+            onClick={() => setState(chooseEncounterOption(state, choice.id))}
+          >
             <strong>{choice.label}</strong>
             <span>{choice.detail}</span>
             <DeltaList consequence={choice.consequence} />
@@ -400,25 +780,57 @@ function EncounterPanel({ state, setState }: { state: GameState; setState: (stat
   );
 }
 
-function ResourcesPanel({ state, setState, mode = "all" }: { state: GameState; setState: (state: GameState) => void; mode?: "all" | "team" | "resources" }) {
+function ResourcesPanel({
+  state,
+  setState,
+  mode = "all",
+}: {
+  state: GameState;
+  setState: (state: GameState) => void;
+  mode?: "all" | "team" | "resources";
+}) {
   const canUse = (resourceId: ResourceItemId) => {
     const resource = state.resources.find((item) => item.id === resourceId);
     if (!resource || resource.charges <= 0) return false;
-    if (resource.usableWhen === "encounter") return Boolean(state.activeEncounterId);
+    if (resource.usableWhen === "encounter")
+      return Boolean(state.activeEncounterId);
     if (resource.usableWhen === "task") return state.activeTasks.length > 0;
     return true;
   };
   return (
-    <section className="panel resources-panel" aria-labelledby="resources-title">
-      <h2 id="resources-title">{mode === "team" ? "Team" : mode === "resources" ? "Resources" : "Resources"}</h2>
+    <section
+      className="panel resources-panel"
+      aria-labelledby="resources-title"
+    >
+      <h2 id="resources-title">
+        {mode === "team"
+          ? "Team"
+          : mode === "resources"
+            ? "Resources"
+            : "Resources"}
+      </h2>
       {mode !== "resources" && (
         <>
           <div className="team-list">
             {state.team.map((member) => (
-              <div key={member.id} className={member.busyUntil > state.minute ? "team-member busy" : "team-member"}>
+              <div
+                key={member.id}
+                className={
+                  member.busyUntil > state.minute
+                    ? "team-member busy"
+                    : "team-member"
+                }
+              >
                 <strong>{member.name}</strong>
-                <span>{member.busyUntil > state.minute ? `Busy ${member.busyUntil - state.minute}m` : "Available"}</span>
-                <span>Trust {member.trust} · fatigue {member.fatigue} · jobs {member.recentDelegations}</span>
+                <span>
+                  {member.busyUntil > state.minute
+                    ? `Busy ${member.busyUntil - state.minute}m`
+                    : "Available"}
+                </span>
+                <span>
+                  Trust {member.trust} · fatigue {member.fatigue} · jobs{" "}
+                  {member.recentDelegations}
+                </span>
                 <small>{member.role}</small>
               </div>
             ))}
@@ -433,7 +845,7 @@ function ResourcesPanel({ state, setState, mode = "all" }: { state: GameState; s
               className="resource-button"
               disabled={!canUse(resource.id)}
               title={resource.description}
-              onClick={() => setState(useResource(state, resource.id))}
+              onClick={() => setState(consumeResource(state, resource.id))}
             >
               <strong>{resource.label}</strong>
               <span>{resource.charges} left</span>
@@ -467,19 +879,51 @@ function AcuityPanel({ state }: { state: GameState }) {
     <section className="panel details-panel" aria-labelledby="details-title">
       <h2 id="details-title">Oversight And Acuity</h2>
       <div className="acuity-grid" aria-label="Ward acuity">
-        {locations.filter((location) => ["volatile", "high", "moderate"].includes(location.risk)).map((location) => (
-          <span key={location.id} className={state.wardAcuity[location.id].level > 60 || state.minute - state.locationLastVisited[location.id] > 28 ? "acuity hot" : "acuity"}>
-            {location.name}: acuity {state.wardAcuity[location.id].level} · momentum {state.wardMomentum[location.id].pressure} · {state.wardMomentum[location.id].tags.join(", ") || "steady"} · seen {Math.max(0, state.minute - state.locationLastVisited[location.id])}m ago
-          </span>
-        ))}
+        {locations
+          .filter((location) =>
+            ["volatile", "high", "moderate"].includes(location.risk),
+          )
+          .map((location) => (
+            <span
+              key={location.id}
+              className={
+                state.wardAcuity[location.id].level > 60 ||
+                state.minute - state.locationLastVisited[location.id] > 28
+                  ? "acuity hot"
+                  : "acuity"
+              }
+            >
+              {location.name}: acuity {state.wardAcuity[location.id].level} ·
+              momentum {state.wardMomentum[location.id].pressure} ·{" "}
+              {state.wardMomentum[location.id].tags.join(", ") || "steady"} ·
+              seen{" "}
+              {Math.max(
+                0,
+                state.minute - state.locationLastVisited[location.id],
+              )}
+              m ago
+            </span>
+          ))}
       </div>
       <div className="summary-grid">
-        <span>Pressure <strong>{state.hospitalPressure}</strong></span>
-        <span>Oversight <strong>{state.oversight}</strong></span>
-        <span>Reg Sense <strong>{state.regSense}</strong></span>
-        <span>Datix <strong>{state.datix}</strong></span>
-        <span>Handover memory <strong>{handoverMemoryScore(state)}</strong></span>
-        <span>Escalations <strong>{state.escalations.length}</strong></span>
+        <span>
+          Pressure <strong>{state.hospitalPressure}</strong>
+        </span>
+        <span>
+          Oversight <strong>{state.oversight}</strong>
+        </span>
+        <span>
+          Reg Sense <strong>{state.regSense}</strong>
+        </span>
+        <span>
+          Datix <strong>{state.datix}</strong>
+        </span>
+        <span>
+          Handover memory <strong>{handoverMemoryScore(state)}</strong>
+        </span>
+        <span>
+          Escalations <strong>{state.escalations.length}</strong>
+        </span>
       </div>
     </section>
   );
@@ -487,24 +931,66 @@ function AcuityPanel({ state }: { state: GameState }) {
 
 type DrawerId = "resources" | "team" | "log" | "bleeps" | "details";
 
-function BottomDrawers({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
+function BottomDrawers({
+  state,
+  setState,
+}: {
+  state: GameState;
+  setState: (state: GameState) => void;
+}) {
   const [openDrawer, setOpenDrawer] = useState<DrawerId | undefined>();
-  const toggle = (drawer: DrawerId) => setOpenDrawer(openDrawer === drawer ? undefined : drawer);
+  const toggle = (drawer: DrawerId) =>
+    setOpenDrawer(openDrawer === drawer ? undefined : drawer);
   return (
     <section className="drawer-shell" aria-label="Secondary game panels">
       <div className="drawer-tabs">
-        <button className={openDrawer === "resources" ? "active" : ""} onClick={() => toggle("resources")}>Resources</button>
-        <button className={openDrawer === "team" ? "active" : ""} onClick={() => toggle("team")}>Team</button>
-        <button className={openDrawer === "log" ? "active" : ""} onClick={() => toggle("log")}>Log</button>
-        <button className={openDrawer === "bleeps" ? "active" : ""} onClick={() => toggle("bleeps")}>All Bleeps</button>
-        <button className={openDrawer === "details" ? "active" : ""} onClick={() => toggle("details")}>Details</button>
+        <button
+          className={openDrawer === "resources" ? "active" : ""}
+          onClick={() => toggle("resources")}
+        >
+          Resources
+        </button>
+        <button
+          className={openDrawer === "team" ? "active" : ""}
+          onClick={() => toggle("team")}
+        >
+          Team
+        </button>
+        <button
+          className={openDrawer === "log" ? "active" : ""}
+          onClick={() => toggle("log")}
+        >
+          Log
+        </button>
+        <button
+          className={openDrawer === "bleeps" ? "active" : ""}
+          onClick={() => toggle("bleeps")}
+        >
+          All Bleeps
+        </button>
+        <button
+          className={openDrawer === "details" ? "active" : ""}
+          onClick={() => toggle("details")}
+        >
+          Details
+        </button>
       </div>
       {openDrawer && (
         <div className="drawer-panel">
-          {openDrawer === "resources" && <ResourcesPanel state={state} setState={setState} mode="resources" />}
-          {openDrawer === "team" && <ResourcesPanel state={state} setState={setState} mode="team" />}
+          {openDrawer === "resources" && (
+            <ResourcesPanel
+              state={state}
+              setState={setState}
+              mode="resources"
+            />
+          )}
+          {openDrawer === "team" && (
+            <ResourcesPanel state={state} setState={setState} mode="team" />
+          )}
           {openDrawer === "log" && <LogPanel state={state} />}
-          {openDrawer === "bleeps" && <TaskPanel state={state} setState={setState} />}
+          {openDrawer === "bleeps" && (
+            <TaskPanel state={state} setState={setState} />
+          )}
           {openDrawer === "details" && <AcuityPanel state={state} />}
         </div>
       )}
@@ -514,18 +1000,30 @@ function BottomDrawers({ state, setState }: { state: GameState; setState: (state
 
 function DatixWarningModal({ onDismiss }: { onDismiss: () => void }) {
   return (
-    <div className="datix-warning-screen" role="dialog" aria-modal="true" aria-labelledby="datix-title">
+    <div
+      className="datix-warning-screen"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="datix-title"
+    >
       <div className="datix-warning-card">
-        <div className="datix-icon" aria-hidden="true">⚠</div>
-        <h2 id="datix-title">You've Been Datixed</h2>
-        <p className="datix-subtitle">A formal incident report has been filed with clinical governance.</p>
-        <p className="datix-body">
-          Your management decision has triggered a Datix incident report. This will be reviewed at the next governance meeting,
-          shared with your educational supervisor, and discussed at length in a departmental audit that achieves nothing but
-          takes three hours of a Tuesday afternoon.
+        <div className="datix-icon" aria-hidden="true">
+          ⚠
+        </div>
+        <h2 id="datix-title">You&apos;ve Been Datixed</h2>
+        <p className="datix-subtitle">
+          A formal incident report has been filed with clinical governance.
         </p>
         <p className="datix-body">
-          In the meantime, please complete the incident form — in full — using the antiquated web portal that only works in Internet Explorer.
+          Your management decision has triggered a Datix incident report. This
+          will be reviewed at the next governance meeting, shared with your
+          educational supervisor, and discussed at length in a departmental
+          audit that achieves nothing but takes three hours of a Tuesday
+          afternoon.
+        </p>
+        <p className="datix-body">
+          In the meantime, please complete the incident form — in full — using
+          the antiquated web portal that only works in Internet Explorer.
         </p>
         <button className="datix-acknowledge" onClick={onDismiss}>
           Submit incident form <span className="datix-cost">(−3 mins)</span>
@@ -535,33 +1033,79 @@ function DatixWarningModal({ onDismiss }: { onDismiss: () => void }) {
   );
 }
 
-function EndScreen({ state, onRestart }: { state: GameState; onRestart: () => void }) {
+function EndScreen({
+  state,
+  onRestart,
+}: {
+  state: GameState;
+  onRestart: () => void;
+}) {
   const rank = endingRank(state);
   return (
-    <div className="end-screen" role="dialog" aria-modal="true" aria-labelledby="end-title">
+    <div
+      className="end-screen"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="end-title"
+    >
       <div className="end-card">
         <h2 id="end-title">{rank}</h2>
         <p>{state.endingReason}</p>
         <div className="debrief-list" aria-label="Handover debrief">
-          {handoverDebrief(state).map((line) => <p key={line}>{line}</p>)}
+          {handoverDebrief(state).map((line) => (
+            <p key={line}>{line}</p>
+          ))}
         </div>
         <div className="summary-grid">
-          <span>Score <strong>{state.score}</strong></span>
-          <span>Patients stabilised <strong>{state.patientsStabilised}</strong></span>
-          <span>Emergencies handled <strong>{state.emergenciesHandled}</strong></span>
-          <span>Dangerous delays <strong>{state.dangerousDelays}</strong></span>
-          <span>Handover quality <strong>{state.handoverQuality}</strong></span>
-          <span>Handover memory <strong>{handoverMemoryScore(state)}</strong></span>
-          <span>Breaks taken <strong>{state.breaksTaken}</strong></span>
-          <span>NHS chaos survived <strong>{state.chaosSurvived}</strong></span>
-          <span>Bird status <strong>{state.birdStatus}</strong></span>
-          <span>Hospital pressure <strong>{state.hospitalPressure}</strong></span>
-          <span>Oversight <strong>{state.oversight}</strong></span>
-          <span>Reg Sense <strong>{state.regSense}</strong></span>
-          <span>Patient safety <strong>{state.patientSafety}</strong></span>
-          <span>Open tasks <strong>{state.activeTasks.filter((t) => t.source !== "treat").length}</strong></span>
+          <span>
+            Score <strong>{state.score}</strong>
+          </span>
+          <span>
+            Patients stabilised <strong>{state.patientsStabilised}</strong>
+          </span>
+          <span>
+            Emergencies handled <strong>{state.emergenciesHandled}</strong>
+          </span>
+          <span>
+            Dangerous delays <strong>{state.dangerousDelays}</strong>
+          </span>
+          <span>
+            Handover quality <strong>{state.handoverQuality}</strong>
+          </span>
+          <span>
+            Handover memory <strong>{handoverMemoryScore(state)}</strong>
+          </span>
+          <span>
+            Breaks taken <strong>{state.breaksTaken}</strong>
+          </span>
+          <span>
+            NHS chaos survived <strong>{state.chaosSurvived}</strong>
+          </span>
+          <span>
+            Bird status <strong>{state.birdStatus}</strong>
+          </span>
+          <span>
+            Hospital pressure <strong>{state.hospitalPressure}</strong>
+          </span>
+          <span>
+            Oversight <strong>{state.oversight}</strong>
+          </span>
+          <span>
+            Reg Sense <strong>{state.regSense}</strong>
+          </span>
+          <span>
+            Patient safety <strong>{state.patientSafety}</strong>
+          </span>
+          <span>
+            Open tasks{" "}
+            <strong>
+              {state.activeTasks.filter((t) => t.source !== "treat").length}
+            </strong>
+          </span>
         </div>
-        <button className="primary wide" onClick={onRestart}>Start another night</button>
+        <button className="primary wide" onClick={onRestart}>
+          Start another night
+        </button>
       </div>
     </div>
   );
@@ -570,7 +1114,9 @@ function EndScreen({ state, onRestart }: { state: GameState; onRestart: () => vo
 type MobileTab = "map" | "encounter" | "tasks" | "info" | "help";
 
 function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 900);
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 900,
+  );
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 899px)");
     const update = () => setIsMobile(mq.matches);
@@ -581,7 +1127,13 @@ function useIsMobile() {
   return isMobile;
 }
 
-function MobileHeader({ state, onRestart }: { state: GameState; onRestart: () => void }) {
+function MobileHeader({
+  state,
+  onRestart,
+}: {
+  state: GameState;
+  onRestart: () => void;
+}) {
   return (
     <header className="mobile-header">
       <div className="mob-brand">Night Med Reg</div>
@@ -592,25 +1144,59 @@ function MobileHeader({ state, onRestart }: { state: GameState; onRestart: () =>
       <div className="mob-vitals">
         <div className="mob-vital-row">
           <span>Stam</span>
-          <div className="meter" aria-label={`Stamina ${state.stamina}`}><b style={{ width: `${state.stamina}%` }} /></div>
+          <div
+            className="meter"
+            role="meter"
+            aria-label={`Stamina ${state.stamina}`}
+            aria-valuenow={state.stamina}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <b style={{ width: `${state.stamina}%` }} />
+          </div>
         </div>
         <div className="mob-vital-row">
           <span>Safe</span>
-          <div className="meter" aria-label={`Safety ${state.patientSafety}`}><b style={{ width: `${state.patientSafety}%` }} /></div>
+          <div
+            className="meter"
+            role="meter"
+            aria-label={`Safety ${state.patientSafety}`}
+            aria-valuenow={state.patientSafety}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <b style={{ width: `${state.patientSafety}%` }} />
+          </div>
         </div>
       </div>
-      <button className="mob-restart" onClick={onRestart} aria-label="Restart game">↺</button>
+      <button
+        className="mob-restart"
+        onClick={onRestart}
+        aria-label="Restart game"
+      >
+        ↺
+      </button>
     </header>
   );
 }
 
-function MobileInfoTab({ state, setState, onRestart }: { state: GameState; setState: (s: GameState) => void; onRestart: () => void }) {
+function MobileInfoTab({
+  state,
+  setState,
+  onRestart,
+}: {
+  state: GameState;
+  setState: (s: GameState) => void;
+  onRestart: () => void;
+}) {
   return (
     <div className="mobile-info-content">
       <section className="panel">
         <div className="panel-heading">
           <h2>Shift Status</h2>
-          <button className="ghost" onClick={onRestart}>Restart</button>
+          <button className="ghost" onClick={onRestart}>
+            Restart
+          </button>
         </div>
         <div className="clock">
           <strong>{formatClock(state.minute)}</strong>
@@ -621,7 +1207,14 @@ function MobileInfoTab({ state, setState, onRestart }: { state: GameState; setSt
           return (
             <div className="meter-row" key={label}>
               <span>{label}</span>
-              <div className="meter" aria-label={`${label} ${value}`}>
+              <div
+                className="meter"
+                role="meter"
+                aria-label={`${label} ${value}`}
+                aria-valuenow={value}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
                 <b style={{ width: `${value}%` }} />
               </div>
               <strong>{value}</strong>
@@ -629,12 +1222,24 @@ function MobileInfoTab({ state, setState, onRestart }: { state: GameState; setSt
           );
         })}
         <div className="score-grid">
-          <span>Score <strong>{state.score}</strong></span>
-          <span>Backlog <strong>{state.pagerBacklog}</strong></span>
-          <span>Pressure <strong>{state.hospitalPressure}</strong></span>
-          <span>Oversight <strong>{state.oversight}</strong></span>
-          <span>Reg Sense <strong>{state.regSense}</strong></span>
-          <span>Bird <strong>{state.birdStatus}</strong></span>
+          <span>
+            Score <strong>{state.score}</strong>
+          </span>
+          <span>
+            Backlog <strong>{state.pagerBacklog}</strong>
+          </span>
+          <span>
+            Pressure <strong>{state.hospitalPressure}</strong>
+          </span>
+          <span>
+            Oversight <strong>{state.oversight}</strong>
+          </span>
+          <span>
+            Reg Sense <strong>{state.regSense}</strong>
+          </span>
+          <span>
+            Bird <strong>{state.birdStatus}</strong>
+          </span>
         </div>
       </section>
       <ResourcesPanel state={state} setState={setState} />
@@ -648,72 +1253,154 @@ function MobileHelpTab() {
   return (
     <div className="mobile-help-content">
       <section className="panel">
-        <div className="panel-heading"><h2>Quick Reference</h2></div>
+        <div className="panel-heading">
+          <h2>Quick Reference</h2>
+        </div>
 
         <h3 className="help-section-title">The Goal</h3>
-        <p className="help-body">Survive the night shift (21:00–09:00) as the on-call medical registrar. Respond to bleeps, make clinical decisions, and hand over safely at dawn.</p>
+        <p className="help-body">
+          Survive the night shift (21:00–09:00) as the on-call medical
+          registrar. Respond to bleeps, make clinical decisions, and hand over
+          safely at dawn.
+        </p>
 
         <h3 className="help-section-title">Your Stats</h3>
         <ul className="help-list">
-          <li><strong>Stamina</strong> — physical energy; hits zero and you can't continue</li>
-          <li><strong>Focus</strong> — mental sharpness; low focus means worse decisions</li>
-          <li><strong>Reputation</strong> — how the team sees you; affects delegation success</li>
-          <li><strong>Safety</strong> — patient safety score; never let this bottom out</li>
-          <li><strong>Confidence</strong> — clinical confidence built by good decisions</li>
-          <li><strong>Caffeine</strong> — temporary boost from coffee and snacks</li>
+          <li>
+            <strong>Stamina</strong> — physical energy; hits zero and you
+            can&apos;t continue
+          </li>
+          <li>
+            <strong>Focus</strong> — mental sharpness; low focus means worse
+            decisions
+          </li>
+          <li>
+            <strong>Reputation</strong> — how the team sees you; affects
+            delegation success
+          </li>
+          <li>
+            <strong>Safety</strong> — patient safety score; never let this
+            bottom out
+          </li>
+          <li>
+            <strong>Confidence</strong> — clinical confidence built by good
+            decisions
+          </li>
+          <li>
+            <strong>Caffeine</strong> — temporary boost from coffee and snacks
+          </li>
         </ul>
 
         <h3 className="help-section-title">The Map</h3>
-        <p className="help-body">Click a connected location to move there. Each move costs time (minutes). Travel through the <em>Main Corridor</em> to reach most areas quickly.</p>
+        <p className="help-body">
+          Click a connected location to move there. Each move costs time
+          (minutes). Travel through the <em>Main Corridor</em> to reach most
+          areas quickly.
+        </p>
 
         <h3 className="help-section-title">Bleeps (Tasks)</h3>
         <ul className="help-list">
           <li>New bleeps appear throughout the shift — check the Bleeps tab</li>
-          <li>Tap a task to see details, clarify, defer, delegate, or escalate</li>
-          <li>Ignoring <strong>critical</strong> tasks causes patient deterioration</li>
-          <li>Use <em>Clarify</em> to reveal the true urgency of vague bleeps</li>
-          <li><em>Defer</em> low-priority bleeps to focus on emergencies</li>
-          <li>Mark important tasks <em>For Handover</em> before the shift ends</li>
+          <li>
+            Tap a task to see details, clarify, defer, delegate, or escalate
+          </li>
+          <li>
+            Ignoring <strong>critical</strong> tasks causes patient
+            deterioration
+          </li>
+          <li>
+            Use <em>Clarify</em> to reveal the true urgency of vague bleeps
+          </li>
+          <li>
+            <em>Defer</em> low-priority bleeps to focus on emergencies
+          </li>
+          <li>
+            Mark important tasks <em>For Handover</em> before the shift ends
+          </li>
         </ul>
 
         <h3 className="help-section-title">Encounters</h3>
-        <p className="help-body">At certain locations you will face a clinical scenario. Read the vignette, observations, examination, and investigations — then pick the best action. Good decisions reward Safety and Score; unsafe choices trigger Datix.</p>
+        <p className="help-body">
+          At certain locations you will face a clinical scenario. Read the
+          vignette, observations, examination, and investigations — then pick
+          the best action. Good decisions reward Safety and Score; unsafe
+          choices trigger Datix.
+        </p>
 
         <h3 className="help-section-title">Your Team</h3>
         <ul className="help-list">
-          <li><strong>FY1</strong> — handles simple jobs; check their trust level</li>
-          <li><strong>Trusted FY2</strong> — competent, reliable for most tasks</li>
-          <li><strong>Locum (no login)</strong> — risky delegation; use sparingly</li>
-          <li><strong>Bed Manager</strong> — logistics only</li>
+          <li>
+            <strong>FY1</strong> — handles simple jobs; check their trust level
+          </li>
+          <li>
+            <strong>Trusted FY2</strong> — competent, reliable for most tasks
+          </li>
+          <li>
+            <strong>Locum (no login)</strong> — risky delegation; use sparingly
+          </li>
+          <li>
+            <strong>Bed Manager</strong> — logistics only
+          </li>
         </ul>
 
         <h3 className="help-section-title">Resources</h3>
         <ul className="help-list">
-          <li><strong>Coffee</strong> — restores Stamina &amp; Caffeine</li>
-          <li><strong>Snack</strong> — small Stamina boost</li>
-          <li><strong>Guideline App</strong> — improves encounter choices</li>
-          <li><strong>ABG Kit</strong> — unlocks blood gas data</li>
-          <li><strong>Cannula Kit</strong> — enables IV access tasks</li>
-          <li><strong>Consultant Advice</strong> — escalation support</li>
-          <li><strong>Radiology Persuasion</strong> — helps get scans approved</li>
+          <li>
+            <strong>Coffee</strong> — restores Stamina &amp; Caffeine
+          </li>
+          <li>
+            <strong>Snack</strong> — small Stamina boost
+          </li>
+          <li>
+            <strong>Guideline App</strong> — improves encounter choices
+          </li>
+          <li>
+            <strong>ABG Kit</strong> — unlocks blood gas data
+          </li>
+          <li>
+            <strong>Cannula Kit</strong> — enables IV access tasks
+          </li>
+          <li>
+            <strong>Consultant Advice</strong> — escalation support
+          </li>
+          <li>
+            <strong>Radiology Persuasion</strong> — helps get scans approved
+          </li>
         </ul>
 
         <h3 className="help-section-title">Key Locations</h3>
         <ul className="help-list">
-          <li><strong>ED Resus</strong> — emergencies; volatile, time-critical</li>
-          <li><strong>MAU</strong> — admissions hub; high pressure</li>
-          <li><strong>ICU</strong> — reward good referrals; penalises vague ones</li>
-          <li><strong>Doctors' Mess</strong> — rest here to restore Stamina</li>
-          <li><strong>Main Corridor</strong> — central hub linking all areas</li>
-          <li><strong>Pharmacy Hatch</strong> — closed at night; use on-call line</li>
+          <li>
+            <strong>ED Resus</strong> — emergencies; volatile, time-critical
+          </li>
+          <li>
+            <strong>MAU</strong> — admissions hub; high pressure
+          </li>
+          <li>
+            <strong>ICU</strong> — reward good referrals; penalises vague ones
+          </li>
+          <li>
+            <strong>Doctors&apos; Mess</strong> — rest here to restore Stamina
+          </li>
+          <li>
+            <strong>Main Corridor</strong> — central hub linking all areas
+          </li>
+          <li>
+            <strong>Pharmacy Hatch</strong> — closed at night; use on-call line
+          </li>
         </ul>
 
         <h3 className="help-section-title">Tips</h3>
         <ul className="help-list">
-          <li>Prioritise <strong>emergencies</strong> — delay costs Safety points</li>
+          <li>
+            Prioritise <strong>emergencies</strong> — delay costs Safety points
+          </li>
           <li>Take a break in the Mess before Stamina bottoms out</li>
           <li>Clarify vague bleeps before travelling far to answer them</li>
-          <li>Escalate to the consultant early on complex or deteriorating patients</li>
+          <li>
+            Escalate to the consultant early on complex or deteriorating
+            patients
+          </li>
           <li>Mark unresolved tasks for handover so the day team knows</li>
         </ul>
       </section>
@@ -721,60 +1408,180 @@ function MobileHelpTab() {
   );
 }
 
-function MobileTabBar({ active, onChange, state }: { active: MobileTab; onChange: (tab: MobileTab) => void; state: GameState }) {
+function MobileTabBar({
+  active,
+  onChange,
+  state,
+}: {
+  active: MobileTab;
+  onChange: (tab: MobileTab) => void;
+  state: GameState;
+}) {
   const taskCount = liveTasks(state).filter((t) => t.source !== "treat").length;
   const hasEncounter = Boolean(state.activeEncounterId);
   return (
     <nav className="mobile-tab-bar" aria-label="Game panels">
-      <button className={active === "map" ? "mob-tab active" : "mob-tab"} onClick={() => onChange("map")}>Map</button>
-      <button className={active === "encounter" ? "mob-tab active" : "mob-tab"} onClick={() => onChange("encounter")}>
+      <button
+        className={active === "map" ? "mob-tab active" : "mob-tab"}
+        onClick={() => onChange("map")}
+      >
+        Map
+      </button>
+      <button
+        className={active === "encounter" ? "mob-tab active" : "mob-tab"}
+        onClick={() => onChange("encounter")}
+      >
         {hasEncounter ? "Encounter ●" : "Encounter"}
       </button>
-      <button className={active === "tasks" ? "mob-tab active" : "mob-tab"} onClick={() => onChange("tasks")}>
+      <button
+        className={active === "tasks" ? "mob-tab active" : "mob-tab"}
+        onClick={() => onChange("tasks")}
+      >
         {taskCount > 0 ? `Bleeps ${taskCount}` : "Bleeps"}
       </button>
-      <button className={active === "info" ? "mob-tab active" : "mob-tab"} onClick={() => onChange("info")}>Info</button>
-      <button className={active === "help" ? "mob-tab active" : "mob-tab"} onClick={() => onChange("help")}>Help</button>
+      <button
+        className={active === "info" ? "mob-tab active" : "mob-tab"}
+        onClick={() => onChange("info")}
+      >
+        Info
+      </button>
+      <button
+        className={active === "help" ? "mob-tab active" : "mob-tab"}
+        onClick={() => onChange("help")}
+      >
+        Help
+      </button>
     </nav>
   );
 }
 
 export default function App() {
   const newRun = () => initialGameState(randomRunSeed());
-  const [state, setState] = useState<GameState>(() => newRun());
-  const currentEncounter = useMemo(() => encounters.find((item) => item.id === state.activeEncounterId), [state.activeEncounterId]);
+  // Resume an in-progress shift if one was saved, otherwise start fresh.
+  const [state, setState] = useState<GameState>(() => loadGame() ?? newRun());
+  const currentEncounter = useMemo(
+    () => encounters.find((item) => item.id === state.activeEncounterId),
+    [state.activeEncounterId],
+  );
   const isMobile = useIsMobile();
   const [mobileTab, setMobileTab] = useState<MobileTab>("map");
+
+  // Discard any saved run and begin a new shift.
+  const restart = () => {
+    clearGame();
+    setState(newRun());
+  };
+
+  // Persist the run whenever it changes; finished runs clear the save.
+  useEffect(() => {
+    saveGame(state);
+  }, [state]);
 
   useEffect(() => {
     if (state.activeEncounterId) setMobileTab("encounter");
   }, [state.activeEncounterId]);
 
+  // Keyboard shortcuts for the desktop loop: act on the top bleep, or pick an
+  // encounter choice by number. Ignored when the game is over, a Datix modal is
+  // up, or focus is in a text field.
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (state.ended || state.datixAlert) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      const encounter = encounters.find(
+        (item) => item.id === state.activeEncounterId,
+      );
+      if (encounter) {
+        const index = Number(event.key) - 1;
+        if (!Number.isNaN(index) && index >= 0) {
+          const choices = orderedEncounterChoices(state, encounter);
+          if (choices[index]) {
+            event.preventDefault();
+            setState(chooseEncounterOption(state, choices[index].id));
+          }
+        }
+        return;
+      }
+      const top = liveTasks(state).find((task) => task.source !== "treat");
+      if (!top) return;
+      const action: Record<string, (next: GameState) => GameState> = {
+        a: (s) => respondToPager(s, top.id),
+        c: (s) => clarifyTask(s, top.id),
+        e: (s) => escalateTask(s, top.id),
+        h: (s) => markTaskForHandover(s, top.id),
+        d: (s) => deferPager(s, top.id),
+        x: (s) => ignorePager(s, top.id),
+      };
+      const run = action[event.key.toLowerCase()];
+      if (run) {
+        event.preventDefault();
+        setState(run(state));
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [state]);
+
   if (isMobile) {
     return (
       <main className="app mobile-app">
-        <MobileHeader state={state} onRestart={() => setState(newRun())} />
+        <MobileHeader state={state} onRestart={restart} />
         <div className="mobile-content">
-          {mobileTab === "map" && <MapPanel state={state} setState={setState} />}
-          {mobileTab === "encounter" && <EncounterPanel state={state} setState={setState} />}
-          {mobileTab === "tasks" && <TaskPanel state={state} setState={setState} />}
-          {mobileTab === "info" && <MobileInfoTab state={state} setState={setState} onRestart={() => setState(newRun())} />}
+          {mobileTab === "map" && (
+            <MapPanel state={state} setState={setState} />
+          )}
+          {mobileTab === "encounter" && (
+            <EncounterPanel state={state} setState={setState} />
+          )}
+          {mobileTab === "tasks" && (
+            <TaskPanel state={state} setState={setState} />
+          )}
+          {mobileTab === "info" && (
+            <MobileInfoTab
+              state={state}
+              setState={setState}
+              onRestart={restart}
+            />
+          )}
           {mobileTab === "help" && <MobileHelpTab />}
         </div>
-        <MobileTabBar active={mobileTab} onChange={setMobileTab} state={state} />
-        {state.datixAlert && !state.ended && <DatixWarningModal onDismiss={() => setState(dismissDatixAlert(state))} />}
-        {state.ended && <EndScreen state={state} onRestart={() => setState(newRun())} />}
+        <MobileTabBar
+          active={mobileTab}
+          onChange={setMobileTab}
+          state={state}
+        />
+        {state.datixAlert && !state.ended && (
+          <DatixWarningModal
+            onDismiss={() => setState(dismissDatixAlert(state))}
+          />
+        )}
+        {state.ended && <EndScreen state={state} onRestart={restart} />}
       </main>
     );
   }
 
   return (
     <main className="app">
-      <StatsPanel state={state} onRestart={() => setState(newRun())} />
-      <div className={state.activeEncounterId ? "layout encounter-mode" : "layout"}>
+      <StatsPanel state={state} onRestart={restart} />
+      <div
+        className={state.activeEncounterId ? "layout encounter-mode" : "layout"}
+      >
         <section className="centre-column">
           <div className="phase-strip">
-            <span>{currentEncounter ? "Challenge in front of you" : `${state.shiftPhase.replace("_", " ")} · next possible bleep ${formatDuration(Math.max(0, state.nextTaskSpawnAt - state.minute))}`}</span>
+            <span>
+              {currentEncounter
+                ? "Challenge in front of you"
+                : `${state.shiftPhase.replace("_", " ")} · next possible bleep ${formatDuration(Math.max(0, state.nextTaskSpawnAt - state.minute))}`}
+            </span>
             <span>Fictional NHS DGH · night shift</span>
           </div>
           <EncounterPanel state={state} setState={setState} />
@@ -785,8 +1592,12 @@ export default function App() {
         </aside>
       </div>
       <BottomDrawers state={state} setState={setState} />
-      {state.datixAlert && !state.ended && <DatixWarningModal onDismiss={() => setState(dismissDatixAlert(state))} />}
-      {state.ended && <EndScreen state={state} onRestart={() => setState(newRun())} />}
+      {state.datixAlert && !state.ended && (
+        <DatixWarningModal
+          onDismiss={() => setState(dismissDatixAlert(state))}
+        />
+      )}
+      {state.ended && <EndScreen state={state} onRestart={restart} />}
     </main>
   );
 }

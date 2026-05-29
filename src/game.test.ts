@@ -1,7 +1,37 @@
 import { describe, expect, it } from "vitest";
-import { encounters, locations, pagerEvents, SHIFT_LENGTH, taskTemplates } from "./content";
+import {
+  encounters,
+  locations,
+  pagerEvents,
+  SHIFT_LENGTH,
+  taskTemplates,
+} from "./content";
 import { bleepPackTasks } from "./bleepPack";
-import { advanceTime, brewCoffee, chooseEncounterOption, chooseWeighted, clarifyTask, deferPager, delegatePager, delegationDuration, endingRank, escalateTask, findSnack, handoverDebrief, handoverMemoryScore, ignorePager, initialGameState, isDelegationAppropriate, markTaskForHandover, orderedEncounterChoices, moveTo, respondToPager, spawnTask, takeBreak, useResource } from "./game";
+import {
+  advanceTime,
+  brewCoffee,
+  chooseEncounterOption,
+  chooseWeighted,
+  clarifyTask,
+  deferPager,
+  delegatePager,
+  delegationDuration,
+  endingRank,
+  escalateTask,
+  findSnack,
+  handoverDebrief,
+  handoverMemoryScore,
+  ignorePager,
+  initialGameState,
+  isDelegationAppropriate,
+  markTaskForHandover,
+  orderedEncounterChoices,
+  moveTo,
+  respondToPager,
+  spawnTask,
+  takeBreak,
+  consumeResource,
+} from "./game";
 import type { GameState } from "./types";
 
 describe("Night Med Reg core logic", () => {
@@ -9,7 +39,9 @@ describe("Night Med Reg core logic", () => {
     const state = initialGameState();
     const next = advanceTime(state, 33);
     expect(next.minute).toBeGreaterThan(state.minute);
-    expect(next.activeTasks.length).toBeGreaterThanOrEqual(state.activeTasks.length);
+    expect(next.activeTasks.length).toBeGreaterThanOrEqual(
+      state.activeTasks.length,
+    );
   });
 
   it("uses a 12-hour night shift", () => {
@@ -17,7 +49,10 @@ describe("Night Med Reg core logic", () => {
   });
 
   it("selects weighted events deterministically with a seed", () => {
-    const pool = [{ id: "a", weight: 1 }, { id: "b", weight: 99 }];
+    const pool = [
+      { id: "a", weight: 1 },
+      { id: "b", weight: 99 },
+    ];
     const [first, firstSeed] = chooseWeighted(pool, 12345);
     const [second, secondSeed] = chooseWeighted(pool, 12345);
     expect(first).toEqual(second);
@@ -54,7 +89,11 @@ describe("Night Med Reg core logic", () => {
   });
 
   it("time advancement during breaks generates or worsens live tasks", () => {
-    const state = { ...initialGameState(), locationId: "mess" as const, activeTasks: [] };
+    const state = {
+      ...initialGameState(),
+      locationId: "mess" as const,
+      activeTasks: [],
+    };
     const next = takeBreak({ ...state, nextTaskSpawnAt: 1 });
     expect(next.minute).toBeGreaterThan(state.minute);
     expect(next.activeTasks.length).toBeGreaterThan(0);
@@ -64,33 +103,51 @@ describe("Night Med Reg core logic", () => {
     const state = {
       ...initialGameState(),
       minute: 30,
-      activeTasks: [{
-        ...initialGameState().activeTasks[2],
-        id: "reg-test",
-        templateId: "t_reg_1",
-        dueAt: 31,
-        trueUrgency: "high" as const,
-        regSense: true,
-        vague: true,
-      }],
+      activeTasks: [
+        {
+          ...initialGameState().activeTasks[2],
+          id: "reg-test",
+          templateId: "t_reg_1",
+          dueAt: 31,
+          trueUrgency: "high" as const,
+          regSense: true,
+          vague: true,
+        },
+      ],
       activePagerIds: ["reg-test"],
     };
     const next = advanceTime(state, 2);
     expect(next.patientSafety).toBeLessThan(state.patientSafety);
-    expect(next.activeTasks.some((task) => task.id === "reg-test" && task.status === "deteriorated")).toBe(true);
-    expect(next.log.some((entry) => entry.text.includes("Reg Sense"))).toBe(true);
+    expect(
+      next.activeTasks.some(
+        (task) => task.id === "reg-test" && task.status === "deteriorated",
+      ),
+    ).toBe(true);
+    expect(next.log.some((entry) => entry.text.includes("Reg Sense"))).toBe(
+      true,
+    );
   });
 
   it("deteriorated bleeps remain visible and only apply penalties once", () => {
     const state = {
       ...initialGameState(),
       minute: 20,
-      activeTasks: [{ ...initialGameState().activeTasks[0], dueAt: 21, penaltyApplied: false }],
+      activeTasks: [
+        {
+          ...initialGameState().activeTasks[0],
+          dueAt: 21,
+          penaltyApplied: false,
+        },
+      ],
       activePagerIds: ["p_sepsis"],
     };
     const once = advanceTime(state, 2);
     const twice = advanceTime(once, 2);
-    expect(once.activeTasks.some((task) => task.id === "p_sepsis" && task.status === "deteriorated")).toBe(true);
+    expect(
+      once.activeTasks.some(
+        (task) => task.id === "p_sepsis" && task.status === "deteriorated",
+      ),
+    ).toBe(true);
     expect(twice.datix).toBe(once.datix);
     expect(twice.patientSafety).toBe(once.patientSafety);
   });
@@ -118,20 +175,31 @@ describe("Night Med Reg core logic", () => {
 
   it("moving between locations keeps the same bleep stack", () => {
     const state = { ...initialGameState(), nextTaskSpawnAt: 999 };
-    const before = state.activeTasks.map((task) => `${task.id}:${task.message}`);
+    const before = state.activeTasks.map(
+      (task) => `${task.id}:${task.message}`,
+    );
     const corridor = moveTo(state, "corridor");
-    const after = corridor.activeTasks.map((task) => `${task.id}:${task.message}`);
+    const after = corridor.activeTasks.map(
+      (task) => `${task.id}:${task.message}`,
+    );
     expect(after).toEqual(before);
   });
 
   it("small time advances do not backfill the bleep stack before scheduled spawn", () => {
     const state = { ...initialGameState(), nextTaskSpawnAt: 100 };
     const next = advanceTime(state, 10);
-    expect(next.activeTasks.map((task) => task.id)).toEqual(state.activeTasks.map((task) => task.id));
+    expect(next.activeTasks.map((task) => task.id)).toEqual(
+      state.activeTasks.map((task) => task.id),
+    );
   });
 
   it("scheduled task spawning happens only after nextTaskSpawnAt", () => {
-    const state = { ...initialGameState(), activeTasks: [], activePagerIds: [], nextTaskSpawnAt: 20 };
+    const state = {
+      ...initialGameState(),
+      activeTasks: [],
+      activePagerIds: [],
+      nextTaskSpawnAt: 20,
+    };
     const before = advanceTime(state, 19);
     const after = advanceTime(state, 21);
     expect(before.activeTasks.length).toBe(state.activeTasks.length);
@@ -140,8 +208,32 @@ describe("Night Med Reg core logic", () => {
   });
 
   it("there is enough time to visit all major hospital areas", () => {
-    let state: GameState = { ...initialGameState(), activeEncounterId: undefined, nextTaskSpawnAt: 999 };
-    const route = ["corridor", "ed_resus", "corridor", "mau", "respiratory", "corridor", "cardiology", "corridor", "elderly", "surgical", "pharmacy", "corridor", "icu", "corridor", "radiology", "lifts", "mess", "lifts", "estates"] as const;
+    let state: GameState = {
+      ...initialGameState(),
+      activeEncounterId: undefined,
+      nextTaskSpawnAt: 999,
+    };
+    const route = [
+      "corridor",
+      "ed_resus",
+      "corridor",
+      "mau",
+      "respiratory",
+      "corridor",
+      "cardiology",
+      "corridor",
+      "elderly",
+      "surgical",
+      "pharmacy",
+      "corridor",
+      "icu",
+      "corridor",
+      "radiology",
+      "lifts",
+      "mess",
+      "lifts",
+      "estates",
+    ] as const;
     for (const locationId of route) {
       state = { ...state, activeEncounterId: undefined };
       state = moveTo(state, locationId);
@@ -151,14 +243,23 @@ describe("Night Med Reg core logic", () => {
   });
 
   it("low-value ignored events can be efficient", () => {
-    const state = { ...initialGameState(), activePagerIds: ["p_drug_chart_blue"] };
+    const state = {
+      ...initialGameState(),
+      activePagerIds: ["p_drug_chart_blue"],
+    };
     const next = ignorePager(state, "p_drug_chart_blue");
     expect(next.patientSafety).toBe(state.patientSafety);
-    expect(next.inappropriateAvoided).toBeGreaterThan(state.inappropriateAvoided);
+    expect(next.inappropriateAvoided).toBeGreaterThan(
+      state.inappropriateAvoided,
+    );
   });
 
   it("pressure is manageable: handling routine work reduces it", () => {
-    const state = { ...initialGameState(), hospitalPressure: 70, nextTaskSpawnAt: 999 };
+    const state = {
+      ...initialGameState(),
+      hospitalPressure: 70,
+      nextTaskSpawnAt: 999,
+    };
     const next = respondToPager(state, "p_drug_chart_blue");
     expect(next.hospitalPressure).toBeLessThan(state.hospitalPressure);
   });
@@ -170,7 +271,14 @@ describe("Night Med Reg core logic", () => {
   });
 
   it("pressure is manageable: a quiet break can cool the shift down", () => {
-    const state = { ...initialGameState(), locationId: "mess" as const, activeTasks: [], activePagerIds: [], hospitalPressure: 60, nextTaskSpawnAt: 999 };
+    const state = {
+      ...initialGameState(),
+      locationId: "mess" as const,
+      activeTasks: [],
+      activePagerIds: [],
+      hospitalPressure: 60,
+      nextTaskSpawnAt: 999,
+    };
     const next = takeBreak(state);
     expect(next.hospitalPressure).toBeLessThan(state.hospitalPressure);
   });
@@ -180,21 +288,31 @@ describe("Night Med Reg core logic", () => {
     const next = delegatePager(state, "p_drug_chart_blue", "fy1");
     const fy1 = next.team.find((member) => member.id === "fy1")!;
     expect(fy1.busyUntil - next.minute).toBeGreaterThanOrEqual(20);
-    expect(next.activeTasks.some((task) => task.id === "p_drug_chart_blue")).toBe(false);
+    expect(
+      next.activeTasks.some((task) => task.id === "p_drug_chart_blue"),
+    ).toBe(false);
   });
 
   it("delegation durations usually sit in the 20-30 minute range", () => {
     const state = initialGameState();
-    const routineTask = state.activeTasks.find((task) => task.id === "p_drug_chart_blue")!;
+    const routineTask = state.activeTasks.find(
+      (task) => task.id === "p_drug_chart_blue",
+    )!;
     const sickTask = state.activeTasks.find((task) => task.id === "p_sepsis")!;
     expect(delegationDuration(routineTask, "fy1")).toBeGreaterThanOrEqual(20);
-    expect(delegationDuration(routineTask, "trusted_fy2")).toBeGreaterThanOrEqual(20);
-    expect(delegationDuration(sickTask, "trusted_fy2")).toBeGreaterThanOrEqual(28);
+    expect(
+      delegationDuration(routineTask, "trusted_fy2"),
+    ).toBeGreaterThanOrEqual(20);
+    expect(delegationDuration(sickTask, "trusted_fy2")).toBeGreaterThanOrEqual(
+      28,
+    );
   });
 
   it("delegation suitability depends on the team member and task", () => {
     const state = initialGameState();
-    const routineTask = state.activeTasks.find((task) => task.id === "p_drug_chart_blue")!;
+    const routineTask = state.activeTasks.find(
+      (task) => task.id === "p_drug_chart_blue",
+    )!;
     const sickTask = state.activeTasks.find((task) => task.id === "p_sepsis")!;
     expect(isDelegationAppropriate(routineTask, "fy1")).toBe(true);
     expect(isDelegationAppropriate(sickTask, "fy1")).toBe(false);
@@ -203,9 +321,26 @@ describe("Night Med Reg core logic", () => {
 
   it("routine and system work has more delegation options", () => {
     const state = initialGameState();
-    const routineTask = state.activeTasks.find((task) => task.id === "p_drug_chart_blue")!;
-    const systemTemplate = taskTemplates.find((task) => task.id === "t_bed_gridlock")!;
-    const systemTask = { ...routineTask, ...systemTemplate, templateId: systemTemplate.id, createdAt: 0, seenAt: 0, lastUpdatedAt: 0, dueAt: 80, status: "new" as const, deferred: false, vague: false, regSense: false, penaltyApplied: false };
+    const routineTask = state.activeTasks.find(
+      (task) => task.id === "p_drug_chart_blue",
+    )!;
+    const systemTemplate = taskTemplates.find(
+      (task) => task.id === "t_bed_gridlock",
+    )!;
+    const systemTask = {
+      ...routineTask,
+      ...systemTemplate,
+      templateId: systemTemplate.id,
+      createdAt: 0,
+      seenAt: 0,
+      lastUpdatedAt: 0,
+      dueAt: 80,
+      status: "new" as const,
+      deferred: false,
+      vague: false,
+      regSense: false,
+      penaltyApplied: false,
+    };
     expect(isDelegationAppropriate(routineTask, "fy1")).toBe(true);
     expect(isDelegationAppropriate(systemTask, "bed_manager")).toBe(true);
     expect(isDelegationAppropriate(systemTask, "locum_no_login")).toBe(true);
@@ -229,26 +364,41 @@ describe("Night Med Reg core logic", () => {
     expect(assessed.activeEncounterStepId).toBe("management");
     const resolved = chooseEncounterOption(assessed, "best");
     expect(resolved.activeEncounterId).toBeUndefined();
-    expect(resolved.patientsStabilised).toBeGreaterThan(state.patientsStabilised);
+    expect(resolved.patientsStabilised).toBeGreaterThan(
+      state.patientsStabilised,
+    );
     expect(resolved.completedEncounterIds).toContain("sepsis_hypotension");
   });
 
   it("encounter choices are not always shown with the best answer first", () => {
     const state = respondToPager(initialGameState(), "p_sepsis");
-    const encounter = encounters.find((item) => item.id === "sepsis_hypotension")!;
-    expect(orderedEncounterChoices(state, encounter)[0].id).not.toBe("assessment_best");
+    const encounter = encounters.find(
+      (item) => item.id === "sepsis_hypotension",
+    )!;
+    expect(orderedEncounterChoices(state, encounter)[0].id).not.toBe(
+      "assessment_best",
+    );
   });
 
   it("clickable resources apply effects and consume charges", () => {
-    const state = { ...initialGameState(), focus: 40, caffeine: 10, nextTaskSpawnAt: 999 };
-    const next = useResource(state, "coffee");
+    const state = {
+      ...initialGameState(),
+      focus: 40,
+      caffeine: 10,
+      nextTaskSpawnAt: 999,
+    };
+    const next = consumeResource(state, "coffee");
     expect(next.focus).toBeGreaterThan(state.focus);
     expect(next.caffeine).toBeGreaterThan(state.caffeine);
-    expect(next.resources.find((item) => item.id === "coffee")!.charges).toBe(state.resources.find((item) => item.id === "coffee")!.charges - 1);
+    expect(next.resources.find((item) => item.id === "coffee")!.charges).toBe(
+      state.resources.find((item) => item.id === "coffee")!.charges - 1,
+    );
   });
 
   it("resources can be earned outside the doctors' mess", () => {
-    const template = taskTemplates.find((task) => task.id === "t_pharmacy_code")!;
+    const template = taskTemplates.find(
+      (task) => task.id === "t_pharmacy_code",
+    )!;
     const task = {
       ...initialGameState().activeTasks[0],
       ...template,
@@ -265,9 +415,18 @@ describe("Night Med Reg core logic", () => {
       regSense: false,
       penaltyApplied: false,
     };
-    const state = { ...initialGameState(), activeTasks: [task], activePagerIds: [task.id], resources: initialGameState().resources.map((item) => item.id === "snack" ? { ...item, charges: 0 } : item) };
+    const state = {
+      ...initialGameState(),
+      activeTasks: [task],
+      activePagerIds: [task.id],
+      resources: initialGameState().resources.map((item) =>
+        item.id === "snack" ? { ...item, charges: 0 } : item,
+      ),
+    };
     const next = respondToPager(state, task.id);
-    expect(next.resources.find((item) => item.id === "snack")!.charges).toBeGreaterThan(0);
+    expect(
+      next.resources.find((item) => item.id === "snack")!.charges,
+    ).toBeGreaterThan(0);
   });
 
   it("bird status changes when the bird is sighted, contained, or ignored", () => {
@@ -288,7 +447,12 @@ describe("Night Med Reg core logic", () => {
       regSense: false,
       penaltyApplied: false,
     };
-    const sighted = { ...initialGameState(), activeTasks: [baseTask], activePagerIds: [baseTask.id], birdStatus: "sighted" as const };
+    const sighted = {
+      ...initialGameState(),
+      activeTasks: [baseTask],
+      activePagerIds: [baseTask.id],
+      birdStatus: "sighted" as const,
+    };
     expect(respondToPager(sighted, "bird-test").birdStatus).toBe("contained");
     expect(ignorePager(sighted, "bird-test").birdStatus).toBe("loose");
   });
@@ -298,9 +462,22 @@ describe("Night Med Reg core logic", () => {
     const existingTask = base.activeTasks[0];
     const activeTasks = taskTemplates
       .filter((template) => template.id !== "corridor_pigeon")
-      .map((template) => ({ ...existingTask, id: `existing-${template.id}`, templateId: template.id, locationId: template.locationId }));
-    const next = spawnTask({ ...base, locationId: "corridor", activeTasks, activePagerIds: activeTasks.map((task) => task.id), birdStatus: "unseen" });
-    expect(next.activeTasks.some((task) => task.templateId === "corridor_pigeon")).toBe(true);
+      .map((template) => ({
+        ...existingTask,
+        id: `existing-${template.id}`,
+        templateId: template.id,
+        locationId: template.locationId,
+      }));
+    const next = spawnTask({
+      ...base,
+      locationId: "corridor",
+      activeTasks,
+      activePagerIds: activeTasks.map((task) => task.id),
+      birdStatus: "unseen",
+    });
+    expect(
+      next.activeTasks.some((task) => task.templateId === "corridor_pigeon"),
+    ).toBe(true);
     expect(next.birdStatus).toBe("sighted");
   });
 
@@ -308,10 +485,48 @@ describe("Night Med Reg core logic", () => {
     const base = initialGameState();
     const pigeon = taskTemplates.find((task) => task.id === "corridor_pigeon")!;
     const duck = taskTemplates.find((task) => task.id === "lifts_duck_family")!;
-    const pigeonTask = { ...base.activeTasks[0], ...pigeon, id: "pigeon-test", templateId: pigeon.id, encounterId: undefined, dueAt: 180, status: "new" as const, penaltyApplied: false };
-    const duckTask = { ...base.activeTasks[0], ...duck, id: "duck-test", templateId: duck.id, encounterId: undefined, dueAt: 180, status: "new" as const, penaltyApplied: false };
-    expect(respondToPager({ ...base, activeTasks: [pigeonTask], activePagerIds: [pigeonTask.id], birdStatus: "sighted" }, pigeonTask.id).birdStatus).toBe("contained");
-    expect(ignorePager({ ...base, activeTasks: [duckTask], activePagerIds: [duckTask.id], birdStatus: "sighted" }, duckTask.id).birdStatus).toBe("loose");
+    const pigeonTask = {
+      ...base.activeTasks[0],
+      ...pigeon,
+      id: "pigeon-test",
+      templateId: pigeon.id,
+      encounterId: undefined,
+      dueAt: 180,
+      status: "new" as const,
+      penaltyApplied: false,
+    };
+    const duckTask = {
+      ...base.activeTasks[0],
+      ...duck,
+      id: "duck-test",
+      templateId: duck.id,
+      encounterId: undefined,
+      dueAt: 180,
+      status: "new" as const,
+      penaltyApplied: false,
+    };
+    expect(
+      respondToPager(
+        {
+          ...base,
+          activeTasks: [pigeonTask],
+          activePagerIds: [pigeonTask.id],
+          birdStatus: "sighted",
+        },
+        pigeonTask.id,
+      ).birdStatus,
+    ).toBe("contained");
+    expect(
+      ignorePager(
+        {
+          ...base,
+          activeTasks: [duckTask],
+          activePagerIds: [duckTask.id],
+          birdStatus: "sighted",
+        },
+        duckTask.id,
+      ).birdStatus,
+    ).toBe("loose");
   });
 
   it("run ends at handover", () => {
@@ -331,15 +546,32 @@ describe("Night Med Reg core logic", () => {
   });
 
   it("a competent seeded route can win after consultant grilling", () => {
-    const state = { ...initialGameState(), minute: 718, score: 180, patientSafety: 88, reputation: 72, handoverQuality: 72, oversight: 72, hospitalPressure: 24, activeTasks: [], activePagerIds: [] };
+    const state = {
+      ...initialGameState(),
+      minute: 718,
+      score: 180,
+      patientSafety: 88,
+      reputation: 72,
+      handoverQuality: 72,
+      oversight: 72,
+      hospitalPressure: 24,
+      activeTasks: [],
+      activePagerIds: [],
+    };
     const grilling = advanceTime(state, 5);
     const ended = chooseEncounterOption(grilling, "best");
     expect(ended.ended).toBe(true);
-    expect(["Safe Pair of Hands", "Consultant Material"]).toContain(endingRank(ended));
+    expect(["Safe Pair of Hands", "Consultant Material"]).toContain(
+      endingRank(ended),
+    );
   });
 
   it("run ends on patient safety collapse", () => {
-    const state = { ...initialGameState(), patientSafety: 2, activePagerIds: ["p_vt"] };
+    const state = {
+      ...initialGameState(),
+      patientSafety: 2,
+      activePagerIds: ["p_vt"],
+    };
     const next = ignorePager(state, "p_vt");
     expect(next.ended).toBe(true);
     expect(next.endingReason).toContain("Patient safety");
@@ -352,8 +584,12 @@ describe("Night Med Reg core logic", () => {
   });
 
   it("different run seeds produce different opening bleep stacks", () => {
-    const a = initialGameState(92821).activeTasks.map((task) => task.templateId);
-    const b = initialGameState(123456789).activeTasks.map((task) => task.templateId);
+    const a = initialGameState(92821).activeTasks.map(
+      (task) => task.templateId,
+    );
+    const b = initialGameState(123456789).activeTasks.map(
+      (task) => task.templateId,
+    );
     expect(a).not.toEqual(b);
   });
 
@@ -361,29 +597,42 @@ describe("Night Med Reg core logic", () => {
     expect(encounters.length).toBeGreaterThanOrEqual(25);
     expect(pagerEvents.length).toBeGreaterThanOrEqual(25);
     expect(taskTemplates.length).toBeGreaterThanOrEqual(40);
-    expect(taskTemplates.filter((task) => task.source === "system").length).toBeGreaterThanOrEqual(15);
+    expect(
+      taskTemplates.filter((task) => task.source === "system").length,
+    ).toBeGreaterThanOrEqual(15);
     for (const encounter of encounters) {
       expect(encounter.choices.length).toBeGreaterThanOrEqual(3);
-      expect(encounter.choices.some((choice) => choice.id === "best")).toBe(true);
+      expect(encounter.choices.some((choice) => choice.id === "best")).toBe(
+        true,
+      );
       expect(encounter.choices.some((choice) => choice.unsafe)).toBe(true);
     }
   });
 
   it("scenario pack tasks point to real multi-step encounters", () => {
-    const packTasks = taskTemplates.filter((task) => task.id.startsWith("pack_"));
+    const packTasks = taskTemplates.filter((task) =>
+      task.id.startsWith("pack_"),
+    );
     expect(packTasks.length).toBe(13);
     for (const task of packTasks) {
       const encounter = encounters.find((item) => item.id === task.encounterId);
       expect(encounter).toBeTruthy();
       expect(encounter?.steps?.length).toBeGreaterThanOrEqual(2);
-      expect(encounter?.steps?.[0].choices.some((choice) => choice.nextStepId)).toBe(true);
-      expect(encounter?.choices.some((choice) => choice.id === "best")).toBe(true);
+      expect(
+        encounter?.steps?.[0].choices.some((choice) => choice.nextStepId),
+      ).toBe(true);
+      expect(encounter?.choices.some((choice) => choice.id === "best")).toBe(
+        true,
+      );
       expect(encounter?.choices.some((choice) => choice.unsafe)).toBe(true);
     }
   });
 
   it("imported Reg Sense pack remains vague, non-delegable, and phase-aware", () => {
-    const importedRegSenseTasks = taskTemplates.filter((task) => task.sender === "Your reg sense" && !task.id.startsWith("t_reg_"));
+    const importedRegSenseTasks = taskTemplates.filter(
+      (task) =>
+        task.sender === "Your reg sense" && !task.id.startsWith("t_reg_"),
+    );
     expect(importedRegSenseTasks.length).toBe(26);
     for (const task of importedRegSenseTasks) {
       expect(task.source).toBe("reg_sense");
@@ -391,7 +640,12 @@ describe("Night Med Reg core logic", () => {
       expect(task.vague).toBe(true);
       expect(task.category).toBe("ambiguous");
       expect(task.delegableTo).toEqual([]);
-      expect(task.riskyDelegateTo).toEqual(["fy1", "trusted_fy2", "locum_no_login", "bed_manager"]);
+      expect(task.riskyDelegateTo).toEqual([
+        "fy1",
+        "trusted_fy2",
+        "locum_no_login",
+        "bed_manager",
+      ]);
       expect(task.phases?.length).toBeGreaterThan(0);
     }
   });
@@ -402,12 +656,29 @@ describe("Night Med Reg core logic", () => {
     const encounterIds = new Set(encounters.map((encounter) => encounter.id));
     for (const task of bleepPackTasks) {
       expect(locationIds.has(task.locationId)).toBe(true);
-      if (task.encounterId) expect(encounterIds.has(task.encounterId)).toBe(true);
+      if (task.encounterId)
+        expect(encounterIds.has(task.encounterId)).toBe(true);
       for (const duration of Object.values(task.delegationDuration ?? {})) {
         expect(duration).toBeGreaterThan(0);
-        const activeTask = { ...initialGameState().activeTasks[0], ...task, templateId: task.id, createdAt: 0, seenAt: 0, lastUpdatedAt: 0, dueAt: 180, status: "new" as const, deferred: false, penaltyApplied: false };
-        const memberId = Object.entries(task.delegationDuration ?? {}).find(([, value]) => value === duration)?.[0];
-        if (memberId) expect(delegationDuration(activeTask, memberId as never)).toBeGreaterThanOrEqual(20);
+        const activeTask = {
+          ...initialGameState().activeTasks[0],
+          ...task,
+          templateId: task.id,
+          createdAt: 0,
+          seenAt: 0,
+          lastUpdatedAt: 0,
+          dueAt: 180,
+          status: "new" as const,
+          deferred: false,
+          penaltyApplied: false,
+        };
+        const memberId = Object.entries(task.delegationDuration ?? {}).find(
+          ([, value]) => value === duration,
+        )?.[0];
+        if (memberId)
+          expect(
+            delegationDuration(activeTask, memberId as never),
+          ).toBeGreaterThanOrEqual(20);
       }
     }
   });
@@ -418,7 +689,9 @@ describe("Night Med Reg core logic", () => {
     for (let i = 0; i < 50 && !state.ended; i += 1) {
       state = takeBreak(state);
     }
-    expect(state.ended || state.patientSafety < 55 || state.hospitalPressure > 75).toBe(true);
+    expect(
+      state.ended || state.patientSafety < 55 || state.hospitalPressure > 75,
+    ).toBe(true);
     expect(state.oversight).toBeLessThan(startingOversight);
   });
 
@@ -445,8 +718,12 @@ describe("Night Med Reg core logic", () => {
     const state = initialGameState();
     const task = state.activeTasks[0];
     const next = markTaskForHandover(state, task.id);
-    expect(next.activeTasks.find((item) => item.id === task.id)?.markedForHandover).toBe(true);
-    expect(handoverMemoryScore(next)).toBeGreaterThan(handoverMemoryScore(state));
+    expect(
+      next.activeTasks.find((item) => item.id === task.id)?.markedForHandover,
+    ).toBe(true);
+    expect(handoverMemoryScore(next)).toBeGreaterThan(
+      handoverMemoryScore(state),
+    );
   });
 
   it("early escalation helps more cleanly than late escalation", () => {
@@ -464,11 +741,15 @@ describe("Night Med Reg core logic", () => {
     const state = initialGameState();
     const good = delegatePager(state, "p_drug_chart_blue", "fy1");
     const goodFy1 = good.team.find((member) => member.id === "fy1")!;
-    expect(goodFy1.trust).toBeGreaterThan(state.team.find((member) => member.id === "fy1")!.trust);
+    expect(goodFy1.trust).toBeGreaterThan(
+      state.team.find((member) => member.id === "fy1")!.trust,
+    );
 
     const poor = delegatePager(state, "p_sepsis", "fy1");
     const poorFy1 = poor.team.find((member) => member.id === "fy1")!;
-    expect(poorFy1.trust).toBeLessThan(state.team.find((member) => member.id === "fy1")!.trust);
+    expect(poorFy1.trust).toBeLessThan(
+      state.team.find((member) => member.id === "fy1")!.trust,
+    );
   });
 
   it("ward momentum influences task spawning toward hot wards", () => {
@@ -479,19 +760,27 @@ describe("Night Med Reg core logic", () => {
       activePagerIds: [],
       wardMomentum: {
         ...base.wardMomentum,
-        respiratory: { tags: ["fragile", "quietlyUnsafe"], pressure: 95, lastShiftedAt: 0 },
+        respiratory: {
+          tags: ["fragile", "quietlyUnsafe"],
+          pressure: 95,
+          lastShiftedAt: 0,
+        },
       },
     };
     const spawnedLocations: string[] = [];
     for (let index = 0; index < 20; index += 1) {
       next = spawnTask({ ...next, activeTasks: [], activePagerIds: [] });
-      if (next.activeTasks[0]) spawnedLocations.push(next.activeTasks[0].locationId);
+      if (next.activeTasks[0])
+        spawnedLocations.push(next.activeTasks[0].locationId);
     }
     expect(spawnedLocations).toContain("respiratory");
   });
 
   it("handover debrief reflects memory and unresolved risks", () => {
-    const state = markTaskForHandover(clarifyTask(initialGameState(), "t_reg_1"), "t_reg_1");
+    const state = markTaskForHandover(
+      clarifyTask(initialGameState(), "t_reg_1"),
+      "t_reg_1",
+    );
     const debrief = handoverDebrief(state);
     expect(debrief.length).toBe(4);
     expect(debrief.join(" ")).toContain("Strongest handover point");
@@ -507,12 +796,20 @@ describe("Night Med Reg core logic", () => {
   });
 
   it("snack runs restore stamina from multiple low-risk locations", () => {
-    const corridor = { ...initialGameState(), locationId: "corridor" as const, stamina: 40 };
+    const corridor = {
+      ...initialGameState(),
+      locationId: "corridor" as const,
+      stamina: 40,
+    };
     const next = findSnack(corridor);
     expect(next.minute).toBeGreaterThan(corridor.minute);
     expect(next.stamina).toBeGreaterThan(corridor.stamina);
 
-    const mau = { ...initialGameState(), locationId: "mau" as const, stamina: 40 };
+    const mau = {
+      ...initialGameState(),
+      locationId: "mau" as const,
+      stamina: 40,
+    };
     expect(findSnack(mau)).toEqual(mau);
   });
 });
