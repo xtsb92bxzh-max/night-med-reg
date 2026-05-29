@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { encounters, locations, taskTemplates, SHIFT_LENGTH } from "./content";
-import { acceptTreat, activeEncounterView, brewCoffee, chooseEncounterOption, clarifyTask, deferPager, delegationDuration, delegatePager, dismissDatixAlert, dismissTreat, endingRank, escalateEncounter, escalateTask, findSnack, formatClock, handoverDebrief, handoverMemoryScore, ignorePager, initialGameState, isDelegationAppropriate, isTeamMemberAvailable, liveTasks, markEncounterForHandover, markTaskForHandover, moveTo, orderedEncounterChoices, randomRunSeed, respondToPager, takeBreak, useResource } from "./game";
+import { encounters, locations, SHIFT_LENGTH } from "./content";
+import { acceptTreat, activeEncounterView, brewCoffee, chooseEncounterOption, clarifyTask, deferPager, delegationDuration, delegatePager, dismissDatixAlert, dismissTreat, endingRank, escalateEncounter, escalateTask, findSnack, formatClock, handoverDebrief, handoverMemoryScore, ignorePager, initialGameState, isDelegationAppropriate, isTeamMemberAvailable, liveTasks, markEncounterForHandover, markTaskForHandover, moveTo, orderedEncounterChoices, randomRunSeed, respondToPager, takeBreak, consumeResource } from "./game";
 import type { ActiveTask, Consequence, GameState, Location, LocationId, ResourceItemId, TeamMemberId } from "./types";
 
 const statRows: [string, keyof GameState][] = [
@@ -433,7 +433,7 @@ function ResourcesPanel({ state, setState, mode = "all" }: { state: GameState; s
               className="resource-button"
               disabled={!canUse(resource.id)}
               title={resource.description}
-              onClick={() => setState(useResource(state, resource.id))}
+              onClick={() => setState(consumeResource(state, resource.id))}
             >
               <strong>{resource.label}</strong>
               <span>{resource.charges} left</span>
@@ -517,7 +517,7 @@ function DatixWarningModal({ onDismiss }: { onDismiss: () => void }) {
     <div className="datix-warning-screen" role="dialog" aria-modal="true" aria-labelledby="datix-title">
       <div className="datix-warning-card">
         <div className="datix-icon" aria-hidden="true">⚠</div>
-        <h2 id="datix-title">You've Been Datixed</h2>
+        <h2 id="datix-title">You&apos;ve Been Datixed</h2>
         <p className="datix-subtitle">A formal incident report has been filed with clinical governance.</p>
         <p className="datix-body">
           Your management decision has triggered a Datix incident report. This will be reviewed at the next governance meeting,
@@ -655,7 +655,7 @@ function MobileHelpTab() {
 
         <h3 className="help-section-title">Your Stats</h3>
         <ul className="help-list">
-          <li><strong>Stamina</strong> — physical energy; hits zero and you can't continue</li>
+          <li><strong>Stamina</strong> — physical energy; hits zero and you can&apos;t continue</li>
           <li><strong>Focus</strong> — mental sharpness; low focus means worse decisions</li>
           <li><strong>Reputation</strong> — how the team sees you; affects delegation success</li>
           <li><strong>Safety</strong> — patient safety score; never let this bottom out</li>
@@ -703,7 +703,7 @@ function MobileHelpTab() {
           <li><strong>ED Resus</strong> — emergencies; volatile, time-critical</li>
           <li><strong>MAU</strong> — admissions hub; high pressure</li>
           <li><strong>ICU</strong> — reward good referrals; penalises vague ones</li>
-          <li><strong>Doctors' Mess</strong> — rest here to restore Stamina</li>
+          <li><strong>Doctors&apos; Mess</strong> — rest here to restore Stamina</li>
           <li><strong>Main Corridor</strong> — central hub linking all areas</li>
           <li><strong>Pharmacy Hatch</strong> — closed at night; use on-call line</li>
         </ul>

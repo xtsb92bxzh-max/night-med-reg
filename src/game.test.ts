@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { encounters, locations, pagerEvents, SHIFT_LENGTH, taskTemplates } from "./content";
 import { bleepPackTasks } from "./bleepPack";
-import { advanceTime, brewCoffee, chooseEncounterOption, chooseWeighted, clarifyTask, deferPager, delegatePager, delegationDuration, endingRank, escalateTask, findSnack, handoverDebrief, handoverMemoryScore, ignorePager, initialGameState, isDelegationAppropriate, markTaskForHandover, orderedEncounterChoices, moveTo, respondToPager, spawnTask, takeBreak, useResource } from "./game";
+import { advanceTime, brewCoffee, chooseEncounterOption, chooseWeighted, clarifyTask, deferPager, delegatePager, delegationDuration, endingRank, escalateTask, findSnack, handoverDebrief, handoverMemoryScore, ignorePager, initialGameState, isDelegationAppropriate, markTaskForHandover, orderedEncounterChoices, moveTo, respondToPager, spawnTask, takeBreak, consumeResource } from "./game";
 import type { GameState } from "./types";
 
 describe("Night Med Reg core logic", () => {
@@ -241,7 +241,7 @@ describe("Night Med Reg core logic", () => {
 
   it("clickable resources apply effects and consume charges", () => {
     const state = { ...initialGameState(), focus: 40, caffeine: 10, nextTaskSpawnAt: 999 };
-    const next = useResource(state, "coffee");
+    const next = consumeResource(state, "coffee");
     expect(next.focus).toBeGreaterThan(state.focus);
     expect(next.caffeine).toBeGreaterThan(state.caffeine);
     expect(next.resources.find((item) => item.id === "coffee")!.charges).toBe(state.resources.find((item) => item.id === "coffee")!.charges - 1);

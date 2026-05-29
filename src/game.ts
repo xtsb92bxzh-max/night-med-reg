@@ -1129,7 +1129,7 @@ function maybeAwardEncounterResource(state: GameState, encounter: Encounter): Ga
   return { ...state, resources: changeResourceCharges(state.resources, award, 1) };
 }
 
-export function useResource(state: GameState, resourceId: ResourceItemId): GameState {
+export function consumeResource(state: GameState, resourceId: ResourceItemId): GameState {
   const resource = state.resources.find((item) => item.id === resourceId);
   if (!resource || resource.charges <= 0 || state.ended) return addLog(state, `${resource?.label ?? "Resource"} is not available.`, "bad");
   if (resource.usableWhen === "encounter" && !state.activeEncounterId) return addLog(state, `${resource.label} is only useful while a patient is in front of you.`, "neutral");
